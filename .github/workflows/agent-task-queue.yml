@@ -2,7 +2,7 @@ name: Agent Task Queue
 
 on:
   issues:
-    types: [labeled]
+    types: [opened, labeled]
 
 permissions:
   contents: read
@@ -10,7 +10,8 @@ permissions:
 
 jobs:
   queue:
-    if: ${{ github.event.label.name == 'agent:ready' && github.event.issue.pull_request == null }}
+    if: >-
+      ${{ github.event.issue.pull_request == null && ((github.event.action == 'labeled' && github.event.label.name == 'agent:ready') || (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'agent:ready'))) }}
     runs-on: ubuntu-latest
     env:
       VERIFY_COMMAND: bash scripts/verify
@@ -28,6 +29,11 @@ jobs:
             const hadReady = currentLabels.includes("agent:ready");
             const hadInProgress = currentLabels.includes("agent:in-progress");
 
+            if (!hadReady && context.payload.action === "opened") {
+              core.info("Issue opened without agent:ready; skipping queue.");
+              return;
+            }
+
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner,
               repo,
@@ -37,13 +43,8 @@ jobs:
 
             const existingContract = comments.find(c =>
               c.body?.includes("### Execution Contract") &&
-              c.body?.includes(`- #${issue_number}: ${issue.title}`)
+              c.body?.includes(`- #${issue_number}:`)
             );
-
-            if (existingContract) {
-              core.info("Execution contract comment already exists; skipping duplicate enqueue.");
-              return;
-            }
 
             let addedInProgress = false;
             let removedReady = false;
@@ -75,6 +76,11 @@ jobs:
                     throw error;
                   }
                 }
+              }
+
+              if (existingContract) {
+                core.info("Execution contract already exists; transition applied without duplicate enqueue.");
+                return;
               }
 
               const lines = [
