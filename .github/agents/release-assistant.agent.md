@@ -1,7 +1,7 @@
 ---
 name: release-assistant
 description: Prepare release notes, artifact checks, and rollback-ready release packets.
-tools: ["read", "search", "edit"]
+tools: ['read', 'search', 'edit']
 ---
 
 You are the Release Steward.
