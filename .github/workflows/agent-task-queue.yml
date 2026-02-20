@@ -46,6 +46,11 @@ jobs:
               c.body?.includes(`- #${issue_number}:`)
             );
 
+            if (existingContract) {
+              core.info("Execution contract already exists; skipping label transition and enqueue (idempotent).");
+              return;
+            }
+
             let addedInProgress = false;
             let removedReady = false;
 
@@ -76,11 +81,6 @@ jobs:
                     throw error;
                   }
                 }
-              }
-
-              if (existingContract) {
-                core.info("Execution contract already exists; transition applied without duplicate enqueue.");
-                return;
               }
 
               const lines = [
