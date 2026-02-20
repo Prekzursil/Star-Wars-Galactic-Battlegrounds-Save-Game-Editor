@@ -20,8 +20,15 @@
 - Rollback command or steps:
 - Data/schema/runtime rollback impact:
 
+## Security Summary
+
+- Security impact: `none | low | medium | high`
+- Secrets or credentials affected: none
+- Privilege boundary changes: none
+
 ## Scope Guard
 
 - [ ] Change is minimal and task-focused
 - [ ] No unrelated refactors included
 - [ ] No secrets or private tokens added
+- [ ] `bash scripts/verify` passed (paste output or note justified skip)
