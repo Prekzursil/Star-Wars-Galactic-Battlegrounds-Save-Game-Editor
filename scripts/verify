@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if find . -maxdepth 3 -type f \( -name 'test_*.py' -o -name '*_test.py' \) | grep -q .; then
+  python -m pytest -q
+else
+  python -m py_compile swgb_save.py swgb_save_gui.py
+fi
