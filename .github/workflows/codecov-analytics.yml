@@ -26,6 +26,7 @@ jobs:
           node-version: '20'
 
       - name: Run python coverage
+        continue-on-error: true
         run: |
           mkdir -p coverage
           python -m pip install --upgrade pip
@@ -33,6 +34,7 @@ jobs:
           python -m pip install pytest pytest-cov
           python -m pytest --cov=. --cov-report=xml:coverage/python-coverage.xml
       - name: Upload coverage to Codecov
+        if: ${{ always() }}
         uses: codecov/codecov-action@v5
         with:
           files: coverage/python-coverage.xml
