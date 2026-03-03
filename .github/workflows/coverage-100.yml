@@ -1,0 +1,48 @@
+name: Coverage 100
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage-100:
+    name: Coverage 100 Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Run python coverage
+        run: |
+          mkdir -p coverage
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
+          python -m pip install pytest pytest-cov
+          python -m pytest --cov=. --cov-report=xml:coverage/python-coverage.xml
+
+      - name: Enforce 100% coverage
+        run: |
+          python3 scripts/quality/assert_coverage_100.py \
+            --xml "python=coverage/python-coverage.xml" \
+            --out-json "coverage-100/coverage.json" \
+            --out-md "coverage-100/coverage.md"
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-100
+          path: |
+            coverage
+            **/coverage
+            **/TestResults
