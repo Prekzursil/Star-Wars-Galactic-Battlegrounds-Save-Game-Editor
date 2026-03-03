@@ -1,0 +1,10 @@
+codecov:
+  require_ci_to_pass: true
+
+coverage:
+  precision: 2
+  round: down
+
+comment:
+  layout: "reach,diff,flags,files"
+  require_changes: true
