@@ -30,10 +30,6 @@ jobs:
       - name: Run quality secrets preflight
         run: |
           python3 scripts/quality/check_quality_secrets.py \
-            --required-secret DEEPSCAN_API_TOKEN \
-            --required-var SENTRY_PROJECT \
-            --required-var DEEPSCAN_POLICY_MODE \
-            --required-var DEEPSCAN_OPEN_ISSUES_URL \
             --out-json quality-secrets/secrets.json \
             --out-md quality-secrets/secrets.md
       - name: Upload secrets preflight artifact

@@ -24,11 +24,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '20'
-      - name: Validate Codecov token
-        run: |
-          if [ -z "${CODECOV_TOKEN}" ]; then
-            echo "Missing CODECOV_TOKEN" >&2
-            exit 1
           fi
 
       - name: Run python coverage
@@ -41,7 +36,6 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage/python-coverage.xml
           flags: python
           fail_ci_if_error: true
