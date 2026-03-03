@@ -1,0 +1,59 @@
+name: Codecov Analytics
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  codecov-analytics:
+    name: Codecov Analytics
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test and coverage dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov coverage
+
+      - name: Collect coverage xml
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find . -maxdepth 3 -type f \( -name 'test_*.py' -o -name '*_test.py' \) | grep -q .; then
+            python -m pytest -q --cov=. --cov-branch --cov-report=xml:coverage.xml
+          else
+            python -m py_compile swgb_save.py swgb_save_gui.py
+            python -m coverage run -m py_compile swgb_save.py swgb_save_gui.py
+            python -m coverage xml -o coverage.xml
+          fi
+          test -f coverage.xml
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238
+        with:
+          files: coverage.xml
+          use_oidc: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          verbose: true
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-results
+          path: coverage.xml
