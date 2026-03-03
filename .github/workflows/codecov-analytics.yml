@@ -1,0 +1,48 @@
+name: Codecov Analytics
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  codecov-analytics:
+    name: Codecov Analytics
+    runs-on: ubuntu-latest
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+      - name: Validate Codecov token
+        run: |
+          if [ -z "${CODECOV_TOKEN}" ]; then
+            echo "Missing CODECOV_TOKEN" >&2
+            exit 1
+          fi
+
+      - name: Run python coverage
+        run: |
+          mkdir -p coverage
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
+          python -m pip install pytest pytest-cov
+          python -m pytest --cov=. --cov-report=xml:coverage/python-coverage.xml
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage/python-coverage.xml
+          flags: python
+          fail_ci_if_error: true
+          verbose: true
