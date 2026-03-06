@@ -11,7 +11,6 @@ from pathlib import Path
 DEFAULT_REQUIRED_SECRETS = [
     "SONAR_TOKEN",
     "CODACY_API_TOKEN",
-    "SNYK_TOKEN",
     "SENTRY_AUTH_TOKEN",
     "APPLITOOLS_API_KEY",
 ]
