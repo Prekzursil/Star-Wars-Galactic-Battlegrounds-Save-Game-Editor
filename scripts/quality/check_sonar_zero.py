@@ -19,10 +19,16 @@ if str(_HELPER_ROOT) not in sys.path:
 from security_helpers import normalize_https_url
 
 SONAR_API_BASE = "https://sonarcloud.io"
+UNRESOLVED_HOTSPOT_STATUS = "TO_REVIEW"
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Assert SonarCloud has zero open issues and a passing quality gate.")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Assert SonarCloud has zero open issues, zero unresolved security hotspots, "
+            "and a passing quality gate."
+        )
+    )
     parser.add_argument("--project-key", required=True, help="Sonar project key")
     parser.add_argument("--token", default="", help="Sonar token (falls back to SONAR_TOKEN env)")
     parser.add_argument("--branch", default="", help="Optional branch scope")
@@ -59,6 +65,8 @@ def _render_md(payload: dict) -> str:
         f"- Status: `{payload['status']}`",
         f"- Project: `{payload['project_key']}`",
         f"- Open issues: `{payload.get('open_issues')}`",
+        f"- Security hotspots total: `{payload.get('security_hotspots_total')}`",
+        f"- Security hotspots to review: `{payload.get('security_hotspots_to_review')}`",
         f"- Quality gate: `{payload.get('quality_gate')}`",
         f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
         "",
@@ -85,6 +93,22 @@ def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path
     return resolved
 
 
+def _scope_query(project_key: str, branch: str, pull_request: str) -> dict[str, str]:
+    query = {"projectKey": project_key}
+    if branch:
+        query["branch"] = branch
+    if pull_request:
+        query["pullRequest"] = pull_request
+    return query
+
+
+def _search_total(api_base: str, endpoint: str, query: dict[str, str], auth_header: str) -> int:
+    url = f"{api_base}{endpoint}?{urllib.parse.urlencode(query)}"
+    payload = _request_json(url, auth_header)
+    paging = payload.get("paging") or {}
+    return int(paging.get("total") or 0)
+
+
 def main() -> int:
     import os
 
@@ -95,6 +119,8 @@ def main() -> int:
     findings: list[str] = []
     open_issues: int | None = None
     quality_gate: str | None = None
+    security_hotspots_total: int | None = None
+    security_hotspots_to_review: int | None = None
 
     if not token:
         findings.append("SONAR_TOKEN is missing.")
@@ -112,23 +138,37 @@ def main() -> int:
             if args.pull_request:
                 issues_query["pullRequest"] = args.pull_request
 
-            issues_url = f"{api_base}/api/issues/search?{urllib.parse.urlencode(issues_query)}"
-            issues_payload = _request_json(issues_url, auth)
-            paging = issues_payload.get("paging") or {}
-            open_issues = int(paging.get("total") or 0)
+            open_issues = _search_total(api_base, "/api/issues/search", issues_query, auth)
 
-            gate_query = {"projectKey": args.project_key}
-            if args.branch:
-                gate_query["branch"] = args.branch
-            if args.pull_request:
-                gate_query["pullRequest"] = args.pull_request
+            hotspots_query = _scope_query(args.project_key, args.branch, args.pull_request)
+            hotspots_query["ps"] = "1"
+            security_hotspots_total = _search_total(
+                api_base,
+                "/api/hotspots/search",
+                dict(hotspots_query),
+                auth,
+            )
+            to_review_query = dict(hotspots_query)
+            to_review_query["status"] = UNRESOLVED_HOTSPOT_STATUS
+            security_hotspots_to_review = _search_total(
+                api_base,
+                "/api/hotspots/search",
+                to_review_query,
+                auth,
+            )
+
+            gate_query = _scope_query(args.project_key, args.branch, args.pull_request)
             gate_url = f"{api_base}/api/qualitygates/project_status?{urllib.parse.urlencode(gate_query)}"
             gate_payload = _request_json(gate_url, auth)
-            project_status = (gate_payload.get("projectStatus") or {})
+            project_status = gate_payload.get("projectStatus") or {}
             quality_gate = str(project_status.get("status") or "UNKNOWN")
 
             if open_issues != 0:
                 findings.append(f"Sonar reports {open_issues} open issues (expected 0).")
+            if security_hotspots_to_review != 0:
+                findings.append(
+                    f"Sonar reports {security_hotspots_to_review} unresolved security hotspots (expected 0)."
+                )
             if quality_gate != "OK":
                 findings.append(f"Sonar quality gate status is {quality_gate} (expected OK).")
 
@@ -141,6 +181,8 @@ def main() -> int:
         "status": status,
         "project_key": args.project_key,
         "open_issues": open_issues,
+        "security_hotspots_total": security_hotspots_total,
+        "security_hotspots_to_review": security_hotspots_to_review,
         "quality_gate": quality_gate,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "findings": findings,
