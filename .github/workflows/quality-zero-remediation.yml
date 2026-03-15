@@ -3,6 +3,7 @@ name: Quality Zero Remediation
 permissions: {}
 
 on:
+  # zizmor: ignore[dangerous-triggers] trusted same-repo remediation entrypoint gated by Quality Zero Gate
   workflow_run:
     workflows: ["Quality Zero Gate"]
     types: [completed]
