@@ -16,13 +16,13 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-codecov-analytics.yml@d3aabc7cb69c73a999761fc674154271e6233812
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-codecov-analytics.yml@2be048255a27d55eb7be18b82091b57f29d34ee6
     with:
       repo_slug: ${{ github.repository }}
       event_name: ${{ github.event_name }}
       sha: ${{ github.event.pull_request.head.sha || github.sha }}
       platform_repository: Prekzursil/quality-zero-platform
-      platform_ref: d3aabc7cb69c73a999761fc674154271e6233812
+      platform_ref: 2be048255a27d55eb7be18b82091b57f29d34ee6
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
