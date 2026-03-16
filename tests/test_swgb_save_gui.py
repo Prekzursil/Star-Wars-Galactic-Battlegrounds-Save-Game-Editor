@@ -145,41 +145,48 @@ def test_fake_widget_helpers_are_noops() -> None:
 
 
 def install_fake_tk(monkeypatch: pytest.MonkeyPatch):
-    message_calls = {"error": [], "warning": [], "info": []}
+    message_calls: dict[str, list[tuple[str, str]]] = {"error": [], "warning": [], "info": []}
     dialog_state = {"filename": ""}
 
     ttk_module = types.ModuleType("tkinter.ttk")
-    ttk_module.Label = FakeWidget
-    ttk_module.Entry = FakeWidget
-    ttk_module.Frame = FakeWidget
-    ttk_module.Button = FakeWidget
-    ttk_module.Treeview = FakeTreeview
-    ttk_module.Scrollbar = FakeWidget
+    for widget_name, widget_value in {
+        "Label": FakeWidget,
+        "Entry": FakeWidget,
+        "Frame": FakeWidget,
+        "Button": FakeWidget,
+        "Treeview": FakeTreeview,
+        "Scrollbar": FakeWidget,
+    }.items():
+        setattr(ttk_module, widget_name, widget_value)
 
     filedialog_module = types.ModuleType("tkinter.filedialog")
-    filedialog_module.askopenfilename = lambda **_kwargs: dialog_state["filename"]
+    setattr(filedialog_module, "askopenfilename", lambda **_kwargs: dialog_state["filename"])
 
     messagebox_module = types.ModuleType("tkinter.messagebox")
-    messagebox_module.showerror = lambda *args: message_calls["error"].append(args)
-    messagebox_module.showwarning = lambda *args: message_calls["warning"].append(args)
-    messagebox_module.showinfo = lambda *args: message_calls["info"].append(args)
+    setattr(messagebox_module, "showerror", lambda *args: message_calls["error"].append(args))
+    setattr(messagebox_module, "showwarning", lambda *args: message_calls["warning"].append(args))
+    setattr(messagebox_module, "showinfo", lambda *args: message_calls["info"].append(args))
 
     tk_module = types.ModuleType("tkinter")
-    tk_module.Tk = FakeRoot
-    tk_module.Toplevel = FakeRoot
-    tk_module.StringVar = FakeStringVar
-    tk_module.W = "W"
-    tk_module.E = "E"
-    tk_module.N = "N"
-    tk_module.S = "S"
-    tk_module.LEFT = "LEFT"
-    tk_module.VERTICAL = "VERTICAL"
-    tk_module.DISABLED = "disabled"
-    tk_module.NORMAL = "normal"
-    tk_module.SUNKEN = "sunken"
-    tk_module.ttk = ttk_module
-    tk_module.filedialog = filedialog_module
-    tk_module.messagebox = messagebox_module
+    tk_members: dict[str, object] = {
+        "Tk": FakeRoot,
+        "Toplevel": FakeRoot,
+        "StringVar": FakeStringVar,
+        "W": "W",
+        "E": "E",
+        "N": "N",
+        "S": "S",
+        "LEFT": "LEFT",
+        "VERTICAL": "VERTICAL",
+        "DISABLED": "disabled",
+        "NORMAL": "normal",
+        "SUNKEN": "sunken",
+        "ttk": ttk_module,
+        "filedialog": filedialog_module,
+        "messagebox": messagebox_module,
+    }
+    for member_name, member_value in tk_members.items():
+        setattr(tk_module, member_name, member_value)
 
     monkeypatch.setitem(sys.modules, "tkinter", tk_module)
     monkeypatch.setitem(sys.modules, "tkinter.ttk", ttk_module)
@@ -343,7 +350,7 @@ def test_load_save_surfaces_read_errors(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
     class BrokenSaveGame:
         def __init__(self, _filename: str):
-            self.players = []
+            self.players: list[object] = []
 
         def read(self):
             raise RuntimeError("parse boom")

@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import zlib
 import struct
 import os
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 @dataclass
 class Player:
@@ -24,9 +26,9 @@ class SaveGame:
     def __init__(self, filename: str):
         """Initialize with save file path"""
         self.filename = filename
-        self.data = None  # Decompressed data
-        self.players = []  # List of players
-        self.wbits = None  # Store successful wbits value
+        self.data: bytes | None = None  # Decompressed data
+        self.players: List[Player] = []  # List of players
+        self.wbits: int | None = None  # Store successful wbits value
     
     def read(self) -> None:
         """Read and decompress the save file"""
@@ -73,7 +75,9 @@ class SaveGame:
     
     def _find_player_entries(self) -> List[Tuple[int, str, int, bytes]]:
         """Find all player entries in the file by looking for the pattern before player names"""
-        entries = []
+        entries: List[Tuple[int, str, int, bytes]] = []
+        if self.data is None:
+            return entries
         pos = 0
         
         # Pattern: 16 db 00 00 00 21
@@ -193,8 +197,11 @@ class SaveGame:
         return entries
     
     
-    def save(self, filename: str = None) -> None:
+    def save(self, filename: str | None = None) -> None:
         """Save changes to file"""
+        if self.data is None:
+            raise ValueError("No save data loaded")
+
         if filename is None:
             filename = self.filename
         
@@ -353,6 +360,9 @@ class SaveGame:
     
     def print_info(self) -> None:
         """Print save file information"""
+        if self.data is None:
+            raise ValueError("No save data loaded")
+
         print(f"\nSave File: {self.filename}")
         print(f"Size: {len(self.data):,} bytes")
         print("\nPlayers:")

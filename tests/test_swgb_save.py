@@ -1,3 +1,5 @@
+# mypy: disable-error-code=assignment
+
 import io
 import runpy
 import struct
@@ -117,6 +119,13 @@ def test_print_info_lists_players(capsys: pytest.CaptureFixture[str]) -> None:
     assert "Player One (Player 1)" in captured
     assert "Food:" in captured
     assert "Wood:" in captured
+
+
+def test_print_info_requires_loaded_data() -> None:
+    save = swgb_save.SaveGame("dummy.ga2")
+
+    with pytest.raises(ValueError, match="No save data loaded"):
+        save.print_info()
 
 
 def test_main_shows_usage_without_path(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
@@ -286,6 +295,12 @@ def test_find_player_entries_logs_processing_errors(
     assert "Error processing pattern" in capsys.readouterr().out
 
 
+def test_find_player_entries_returns_empty_without_loaded_data() -> None:
+    save = swgb_save.SaveGame("dummy.ga2")
+
+    assert save._find_player_entries() == []
+
+
 def test_save_updates_via_direct_name_match_and_warns_for_missing_players(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -318,6 +333,13 @@ def test_save_updates_via_direct_name_match_and_warns_for_missing_players(
     output = capsys.readouterr().out
     assert "Found potential name (direct): 'Han Solo'" in output
     assert "Warning: Could not update resources for players: {'Leia'}" in output
+
+
+def test_save_requires_loaded_data(tmp_path: Path) -> None:
+    save = swgb_save.SaveGame(str(tmp_path / "missing.ga2"))
+
+    with pytest.raises(ValueError, match="No save data loaded"):
+        save.save()
 
 
 def test_save_continues_after_name_processing_errors(
