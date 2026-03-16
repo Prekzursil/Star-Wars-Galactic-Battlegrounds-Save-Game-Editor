@@ -1,0 +1,397 @@
+import importlib
+import runpy
+import sys
+import types
+from pathlib import Path
+
+import pytest
+
+
+class FakeStringVar:
+    def __init__(self, value: str = ""):
+        self.value = value
+
+    def get(self) -> str:
+        return self.value
+
+    def set(self, value: str) -> None:
+        self.value = value
+
+
+class FakeWidget:
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+        self.state = kwargs.get("state")
+        self.textvariable = kwargs.get("textvariable")
+        self.command = kwargs.get("command")
+        self.destroyed = False
+        self.items = {}
+        self.children = []
+        self.selected = ()
+
+    def grid(self, *args, **kwargs):
+        self.grid_args = (args, kwargs)
+
+    def pack(self, *args, **kwargs):
+        self.pack_args = (args, kwargs)
+
+    def configure(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    config = configure
+
+    def columnconfigure(self, *args, **kwargs):
+        self.columnconfigure_args = (args, kwargs)
+
+    def rowconfigure(self, *args, **kwargs):
+        self.rowconfigure_args = (args, kwargs)
+
+    def destroy(self):
+        self.destroyed = True
+
+    def set(self, *_args, **_kwargs):
+        return None
+
+
+class FakeRoot(FakeWidget):
+    def title(self, value: str) -> None:
+        self.title_value = value
+
+    def geometry(self, value: str) -> None:
+        self.geometry_value = value
+
+    def transient(self, _parent) -> None:
+        self.transient_parent = _parent
+
+    def grab_set(self) -> None:
+        self.grabbed = True
+
+    def update(self) -> None:
+        self.updated = True
+
+    def wait_window(self, _window) -> None:
+        self.waited = True
+
+    def resizable(self, width: bool, height: bool) -> None:
+        self.resizable_args = (width, height)
+
+    def mainloop(self) -> None:
+        self.mainloop_called = True
+
+    def winfo_rootx(self) -> int:
+        return 50
+
+    def winfo_rooty(self) -> int:
+        return 60
+
+    def winfo_width(self) -> int:
+        return 400
+
+    def winfo_height(self) -> int:
+        return 300
+
+
+class FakeTreeview(FakeWidget):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.rows = {}
+        self.order = []
+
+    def heading(self, *_args, **_kwargs):
+        return None
+
+    def column(self, *_args, **_kwargs):
+        return None
+
+    def yview(self, *_args, **_kwargs):
+        return None
+
+    def insert(self, _parent, _index, values):
+        item_id = f"item-{len(self.order)}"
+        self.rows[item_id] = list(values)
+        self.order.append(item_id)
+        return item_id
+
+    def get_children(self):
+        return tuple(self.order)
+
+    def delete(self, item_id):
+        self.rows.pop(item_id, None)
+        self.order = [item for item in self.order if item != item_id]
+
+    def item(self, item_id, values=None):
+        if values is not None:
+            self.rows[item_id] = list(values)
+        return {"values": self.rows[item_id]}
+
+    def index(self, item_id):
+        return self.order.index(item_id)
+
+    def selection(self):
+        return self.selected
+
+    def selection_set(self, item_id):
+        self.selected = (item_id,)
+
+
+def test_fake_widget_helpers_are_noops() -> None:
+    widget = FakeWidget()
+    tree = FakeTreeview()
+
+    assert widget.set("a", "b") is None
+    assert tree.yview("moveto", 0) is None
+
+
+def install_fake_tk(monkeypatch: pytest.MonkeyPatch):
+    message_calls = {"error": [], "warning": [], "info": []}
+    dialog_state = {"filename": ""}
+
+    ttk_module = types.ModuleType("tkinter.ttk")
+    ttk_module.Label = FakeWidget
+    ttk_module.Entry = FakeWidget
+    ttk_module.Frame = FakeWidget
+    ttk_module.Button = FakeWidget
+    ttk_module.Treeview = FakeTreeview
+    ttk_module.Scrollbar = FakeWidget
+
+    filedialog_module = types.ModuleType("tkinter.filedialog")
+    filedialog_module.askopenfilename = lambda **_kwargs: dialog_state["filename"]
+
+    messagebox_module = types.ModuleType("tkinter.messagebox")
+    messagebox_module.showerror = lambda *args: message_calls["error"].append(args)
+    messagebox_module.showwarning = lambda *args: message_calls["warning"].append(args)
+    messagebox_module.showinfo = lambda *args: message_calls["info"].append(args)
+
+    tk_module = types.ModuleType("tkinter")
+    tk_module.Tk = FakeRoot
+    tk_module.Toplevel = FakeRoot
+    tk_module.StringVar = FakeStringVar
+    tk_module.W = "W"
+    tk_module.E = "E"
+    tk_module.N = "N"
+    tk_module.S = "S"
+    tk_module.LEFT = "LEFT"
+    tk_module.VERTICAL = "VERTICAL"
+    tk_module.DISABLED = "disabled"
+    tk_module.NORMAL = "normal"
+    tk_module.SUNKEN = "sunken"
+    tk_module.ttk = ttk_module
+    tk_module.filedialog = filedialog_module
+    tk_module.messagebox = messagebox_module
+
+    monkeypatch.setitem(sys.modules, "tkinter", tk_module)
+    monkeypatch.setitem(sys.modules, "tkinter.ttk", ttk_module)
+    monkeypatch.setitem(sys.modules, "tkinter.filedialog", filedialog_module)
+    monkeypatch.setitem(sys.modules, "tkinter.messagebox", messagebox_module)
+
+    module = importlib.import_module("swgb_save_gui")
+    module = importlib.reload(module)
+    return module, dialog_state, message_calls
+
+
+def test_edit_resource_dialog_accepts_valid_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
+
+    dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One", [1.0, 2.0, 3.0, 4.0])
+    dialog.entries["Carbon"].set("10")
+    dialog.entries["Food"].set("20")
+    dialog.entries["Nova"].set("30")
+    dialog.entries["Ore"].set("40")
+
+    dialog.ok()
+
+    assert dialog.result == [10.0, 20.0, 30.0, 40.0]
+    assert dialog.dialog.destroyed is True
+    assert message_calls["error"] == []
+
+
+def test_edit_resource_dialog_rejects_invalid_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
+
+    dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One", [1.0, 2.0, 3.0, 4.0])
+    dialog.entries["Carbon"].set("-1")
+
+    dialog.ok()
+
+    assert dialog.result is None
+    assert dialog.dialog.destroyed is False
+    assert message_calls["error"]
+
+
+def test_edit_resource_dialog_handles_unexpected_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
+
+    dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One", [1.0, 2.0, 3.0, 4.0])
+
+    class BrokenVar:
+        def get(self):
+            raise RuntimeError("boom")
+
+    dialog.entries["Carbon"] = BrokenVar()
+
+    dialog.ok()
+
+    assert dialog.result is None
+    assert dialog.dialog.destroyed is False
+    assert message_calls["error"][-1] == ("Error", "Failed to save changes: boom")
+
+
+def test_edit_resource_dialog_cancel_closes_dialog(monkeypatch: pytest.MonkeyPatch) -> None:
+    gui, _dialog_state, _message_calls = install_fake_tk(monkeypatch)
+
+    dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One", [1.0, 2.0, 3.0, 4.0])
+    dialog.cancel()
+
+    assert dialog.dialog.destroyed is True
+
+
+def test_save_game_gui_loads_browse_edit_and_save_flows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    gui, dialog_state, message_calls = install_fake_tk(monkeypatch)
+
+    class FakePlayer:
+        def __init__(self, name, index, resources):
+            self.name = name
+            self.index = index
+            self.resources = resources
+
+    class FakeSaveGame:
+        def __init__(self, filename: str):
+            self.filename = filename
+            self.players = [FakePlayer("Alpha", 1, [10.0, 20.0, 30.0, 40.0])]
+
+        def read(self):
+            return None
+
+        def save(self, _filename):
+            self.saved = True
+
+    monkeypatch.setattr(gui, "SaveGame", FakeSaveGame)
+    root = gui.tk.Tk()
+    app = gui.SaveGameGUI(root)
+
+    dialog_state["filename"] = str(tmp_path / "save.ga2")
+    Path(dialog_state["filename"]).write_bytes(b"save-bytes")
+    app.browse_file()
+    assert app.file_path.get() == dialog_state["filename"]
+
+    stale_row = app.tree.insert("", "end", values=["stale"])
+    app.load_save()
+    tree_items = app.tree.get_children()
+    assert len(tree_items) == 1
+    assert app.tree.item(tree_items[0])["values"][0] != "stale"
+    assert app.scrollbar.set("ignored") is None
+    assert app.tree.yview() is None
+    assert app.edit_button.state == gui.tk.NORMAL
+    assert app.save_button.state == gui.tk.NORMAL
+    assert "Loaded 1 players" in app.status_var.get()
+
+    app.tree.selection_set(tree_items[0])
+
+    class FakeDialog:
+        def __init__(self, *_args, **_kwargs):
+            self.dialog = object()
+            self.result = [100.0, 200.0, 300.0, 400.0]
+
+    monkeypatch.setattr(gui, "EditResourceDialog", FakeDialog)
+    app.edit_resources()
+    assert app.current_save.players[0].resources == [100.0, 200.0, 300.0, 400.0]
+    assert "Updated resources" in app.status_var.get()
+
+    app.save_changes()
+    assert message_calls["info"]
+    assert "Changes saved successfully" in app.status_var.get()
+
+
+def test_save_game_gui_handles_missing_selection_and_save_errors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
+    root = gui.tk.Tk()
+    app = gui.SaveGameGUI(root)
+
+    app.edit_resources()
+    assert message_calls["warning"]
+
+    class FailingSave:
+        def save(self, _filename):
+            raise RuntimeError("boom")
+
+    app.current_save = FailingSave()
+    app.file_path.set(str(tmp_path / "save.ga2"))
+    Path(app.file_path.get()).write_bytes(b"save")
+
+    app.save_changes()
+    assert message_calls["error"]
+    assert app.status_var.get() == "Error saving changes"
+
+
+def test_load_save_requires_a_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
+    app = gui.SaveGameGUI(gui.tk.Tk())
+
+    app.load_save()
+
+    assert message_calls["error"]
+
+
+def test_load_save_surfaces_read_errors(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    gui, dialog_state, message_calls = install_fake_tk(monkeypatch)
+
+    class BrokenSaveGame:
+        def __init__(self, _filename: str):
+            self.players = []
+
+        def read(self):
+            raise RuntimeError("parse boom")
+
+    monkeypatch.setattr(gui, "SaveGame", BrokenSaveGame)
+    app = gui.SaveGameGUI(gui.tk.Tk())
+    dialog_state["filename"] = str(tmp_path / "broken.ga2")
+    Path(dialog_state["filename"]).write_bytes(b"save")
+    app.file_path.set(dialog_state["filename"])
+
+    app.load_save()
+
+    assert message_calls["error"][-1] == ("Error", "Failed to load save file: parse boom")
+    assert app.status_var.get() == "Error loading file"
+
+
+def test_save_changes_returns_early_when_no_current_save(monkeypatch: pytest.MonkeyPatch) -> None:
+    gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
+    app = gui.SaveGameGUI(gui.tk.Tk())
+
+    app.save_changes()
+
+    assert message_calls == {"error": [], "warning": [], "info": []}
+
+
+def test_main_builds_gui_and_enters_mainloop(monkeypatch: pytest.MonkeyPatch) -> None:
+    gui, _dialog_state, _message_calls = install_fake_tk(monkeypatch)
+    root = gui.tk.Tk()
+    monkeypatch.setattr(gui.tk, "Tk", lambda: root)
+    captured = {}
+
+    class FakeApp:
+        def __init__(self, passed_root):
+            captured["root"] = passed_root
+
+    monkeypatch.setattr(gui, "SaveGameGUI", FakeApp)
+
+    gui.main()
+
+    assert captured["root"] is root
+    assert root.mainloop_called is True
+
+
+def test_running_swgb_save_gui_as_main_executes_entrypoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    gui, _dialog_state, _message_calls = install_fake_tk(monkeypatch)
+    root = gui.tk.Tk()
+    monkeypatch.setattr(gui.tk, "Tk", lambda: root)
+
+    runpy.run_path(str(Path(gui.__file__)), run_name="__main__")
+
+    assert root.mainloop_called is True
