@@ -15,6 +15,7 @@ MIN_MARKER_NAME_LENGTH = 3
 MIN_DIRECT_NAME_LENGTH = 4
 RESOURCE_COUNT = 4
 RESOURCE_VALUE_MAX = 100000.0
+NO_SAVE_DATA_LOADED = "No save data loaded"
 
 
 @dataclass
@@ -258,7 +259,7 @@ class SaveGame:
             return False
 
         if self.data is None:
-            raise ValueError("No save data loaded")
+            raise ValueError(NO_SAVE_DATA_LOADED)
 
         print(f"Matched player: {player.name}")
         resource_start = pattern_pos + len(PLAYER_PATTERN)
@@ -275,7 +276,7 @@ class SaveGame:
     def save(self, filename: str | None = None) -> None:
         """Save changes to file."""
         if self.data is None:
-            raise ValueError("No save data loaded")
+            raise ValueError(NO_SAVE_DATA_LOADED)
 
         if filename is None:
             filename = self.filename
@@ -295,7 +296,7 @@ class SaveGame:
             pos = pattern_pos + 1
 
         if len(updated_players) != len(self.players):
-            missing = set(player.name for player in self.players) - updated_players
+            missing = {player.name for player in self.players} - updated_players
             print(f"Warning: Could not update resources for players: {missing}")
 
         self.data = bytes(data)
@@ -333,7 +334,7 @@ class SaveGame:
     def print_info(self) -> None:
         """Print save file information."""
         if self.data is None:
-            raise ValueError("No save data loaded")
+            raise ValueError(NO_SAVE_DATA_LOADED)
 
         print(f"\nSave File: {self.filename}")
         print(f"Size: {len(self.data):,} bytes")
