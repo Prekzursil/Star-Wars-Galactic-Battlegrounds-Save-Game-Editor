@@ -221,6 +221,32 @@ def test_find_player_entries_handles_direct_name_decode_errors() -> None:
     assert save.players == [swgb_save.Player("Player 1", 1, [2.0, 1.0, 3.0, 4.0])]
 
 
+def test_decode_candidate_name_rejects_non_alnum_characters() -> None:
+    save = swgb_save.SaveGame("dummy.ga2")
+    save.data = b"Han!"
+
+    assert save._decode_candidate_name(0, 4, min_length=3) is None
+
+
+def test_name_from_marker_returns_none_when_offset_exceeds_data() -> None:
+    save = swgb_save.SaveGame("dummy.ga2")
+    save.data = b"\x09"
+
+    assert save._name_from_marker(0, 1) is None
+
+
+def test_read_resource_values_returns_none_without_loaded_data() -> None:
+    save = swgb_save.SaveGame("dummy.ga2")
+
+    assert save._read_resource_values(0) is None
+
+
+def test_build_entry_uses_empty_payload_without_loaded_data() -> None:
+    save = swgb_save.SaveGame("dummy.ga2")
+
+    assert save._build_entry(12, "Player One", 1) == (12, "Player One", 1, b"")
+
+
 def test_find_player_entries_skips_out_of_range_resource_sequences() -> None:
     pattern = bytes.fromhex("16db00000021")
     payload = pattern + struct.pack("<ffff", 1.0, 2.0, 3.0, 100001.0) + b"\x00" * 48
@@ -337,6 +363,16 @@ def test_save_continues_after_name_processing_errors(
 
     output = capsys.readouterr().out
     assert "Warning: Could not update resources for players" in output
+
+
+def test_update_matching_player_requires_loaded_data() -> None:
+    save = swgb_save.SaveGame("dummy.ga2")
+    save.players = [swgb_save.Player("Han Solo", 1, [11.0, 22.0, 33.0, 44.0])]
+
+    save._find_name_before_pattern = lambda *args, **kwargs: "Han Solo"  # type: ignore[method-assign]
+
+    with pytest.raises(ValueError, match="No save data loaded"):
+        save._update_matching_player(0, bytearray(), set())
 
 
 def test_save_logs_mismatched_written_values_for_direct_name_updates(
