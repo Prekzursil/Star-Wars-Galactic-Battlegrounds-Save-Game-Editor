@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from __future__ import absolute_import, annotations, division
+from __future__ import absolute_import, division
 
 import argparse
 import json
@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
-_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
+_HELPER_ROOT = _SCRIPT_DIR if os.path.exists(str(_SCRIPT_DIR / "security_helpers.py")) else _SCRIPT_DIR.parent
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
