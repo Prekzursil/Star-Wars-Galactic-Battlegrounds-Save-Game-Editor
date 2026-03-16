@@ -14,7 +14,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-scanner-matrix.yml@main
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-scanner-matrix.yml@cb067b5a04b596deef983f93eac95f227b9dc09c
     with:
       repo_slug: ${{ github.repository }}
       event_name: ${{ github.event_name }}
