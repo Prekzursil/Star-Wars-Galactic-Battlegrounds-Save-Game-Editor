@@ -1,38 +1,27 @@
 name: Codecov Analytics
 
+permissions:
+  contents: read
+  id-token: write
+
 on:
-  pull_request:
-    branches: [main, master]
   push:
+    branches: [main, master]
+  pull_request:
     branches: [main, master]
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
-  codecov-analytics:
-    name: Codecov Analytics
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install test tooling
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pytest pytest-cov
-      - name: Generate coverage XML
-        run: python -m pytest --cov=. --cov-report=xml:coverage/python-coverage.xml
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
-        with:
-          files: coverage/python-coverage.xml
-          disable_search: true
-          fail_ci_if_error: true
-          verbose: true
-          flags: python
-          token: ${{ secrets.CODECOV_TOKEN }}
+  shared-codecov-analytics:
+    permissions:
+      contents: read
+      id-token: write
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-codecov-analytics.yml@f22d03e44b104b4746fb4825b8a16637ee26bc69
+    with:
+      repo_slug: ${{ github.repository }}
+      event_name: ${{ github.event_name }}
+      sha: ${{ github.event.pull_request.head.sha || github.sha }}
+      platform_repository: Prekzursil/quality-zero-platform
+      platform_ref: f22d03e44b104b4746fb4825b8a16637ee26bc69
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
