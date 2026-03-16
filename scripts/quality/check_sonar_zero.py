@@ -6,7 +6,6 @@ import base64
 import json
 import sys
 import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,7 +15,7 @@ _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() els
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import normalize_https_url  # noqa: E402
+from security_helpers import normalize_https_url, request_https_json  # noqa: E402
 
 SONAR_API_BASE = "https://sonarcloud.io"
 UNRESOLVED_HOTSPOT_STATUS = "TO_REVIEW"
@@ -44,18 +43,19 @@ def _auth_header(token: str) -> str:
 
 
 def _request_json(url: str, auth_header: str) -> dict[str, Any]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"sonarcloud.io"}).rstrip("/")
-    request = urllib.request.Request(
-        safe_url,
+    payload, _ = request_https_json(
+        url.rstrip("/"),
         headers={
             "Accept": "application/json",
             "Authorization": auth_header,
             "User-Agent": "reframe-sonar-zero-gate",
         },
         method="GET",
+        allowed_host_suffixes={"sonarcloud.io"},
     )
-    with urllib.request.urlopen(request, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected Sonar response payload")
+    return payload
 
 
 def _render_md(payload: dict) -> str:

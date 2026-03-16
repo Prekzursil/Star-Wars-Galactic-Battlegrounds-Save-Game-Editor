@@ -6,11 +6,16 @@ import json
 import os
 import sys
 import time
-import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
+if str(_HELPER_ROOT) not in sys.path:
+    sys.path.insert(0, str(_HELPER_ROOT))
+
+from security_helpers import request_https_json  # noqa: E402
 
 
 def _parse_args() -> argparse.Namespace:
@@ -27,7 +32,7 @@ def _parse_args() -> argparse.Namespace:
 
 def _api_get(repo: str, path: str, token: str) -> dict[str, Any]:
     url = f"https://api.github.com/repos/{repo}/{path.lstrip('/')}"
-    req = urllib.request.Request(
+    payload, _ = request_https_json(
         url,
         headers={
             "Accept": "application/vnd.github+json",
@@ -36,9 +41,11 @@ def _api_get(repo: str, path: str, token: str) -> dict[str, Any]:
             "User-Agent": "reframe-quality-zero-gate",
         },
         method="GET",
+        allowed_hosts={"api.github.com"},
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected GitHub API response payload")
+    return payload
 
 
 def _collect_contexts(check_runs_payload: dict[str, Any], status_payload: dict[str, Any]) -> dict[str, dict[str, str]]:

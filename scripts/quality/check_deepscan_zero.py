@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -14,7 +13,7 @@ _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() els
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import normalize_https_url  # noqa: E402
+from security_helpers import normalize_https_url, request_https_json  # noqa: E402
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
 
@@ -45,18 +44,19 @@ def extract_total_open(payload: Any) -> int | None:
 
 
 def _request_json(url: str, token: str) -> dict[str, Any]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"deepscan.io"})
-    req = urllib.request.Request(
-        safe_url,
+    payload, _ = request_https_json(
+        url,
         headers={
             "Accept": "application/json",
             "Authorization": f"Bearer {token}",
             "User-Agent": "reframe-deepscan-zero-gate",
         },
         method="GET",
+        allowed_host_suffixes={"deepscan.io"},
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected DeepScan response payload")
+    return payload
 
 
 def _render_md(payload: dict) -> str:

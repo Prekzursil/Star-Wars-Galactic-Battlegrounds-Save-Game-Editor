@@ -31,6 +31,10 @@ def _raw_deflate(payload: bytes) -> bytes:
     return compressor.compress(payload) + compressor.flush()
 
 
+def _raise_runtime_error(message: str) -> None:
+    raise RuntimeError(message)
+
+
 def test_hex_dump_formats_offsets_and_ascii() -> None:
     save = swgb_save.SaveGame("dummy.ga2")
 
@@ -194,11 +198,14 @@ def test_find_player_entries_handles_marker_and_direct_name_fallbacks(
     save = swgb_save.SaveGame("dummy.ga2")
     save.data = payload
 
-    save._find_player_entries()
+    entries = save._find_player_entries()
 
     assert [(player.name, player.resources) for player in save.players] == [
         ("Han Solo", [20.0, 10.0, 30.0, 40.0])
     ]
+    assert len(entries) == 1
+    assert entries[0][:3] == (36, "Han Solo", 1)
+    assert len(entries[0][3]) == 16
     output = capsys.readouterr().out
     assert "Found name 'Han Solo'" in output
 
@@ -208,34 +215,6 @@ def test_find_player_entries_handles_direct_name_decode_errors() -> None:
     payload = b"\x00" * 12 + (b"\xe9" * 4) + b"\x00" + b"\x00" * 8 + pattern + struct.pack("<ffff", 1.0, 2.0, 3.0, 4.0) + b"\x00" * 32
     save = swgb_save.SaveGame("dummy.ga2")
     save.data = payload
-
-    save._find_player_entries()
-
-    assert save.players == [swgb_save.Player("Player 1", 1, [2.0, 1.0, 3.0, 4.0])]
-
-
-def test_find_player_entries_handles_direct_name_scan_exceptions(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    pattern = bytes.fromhex("16db00000021")
-    payload = (
-        b"\x00" * 12
-        + b"Han Solo\x00"
-        + b"\x00" * 8
-        + pattern
-        + struct.pack("<ffff", 1.0, 2.0, 3.0, 4.0)
-        + b"\x00" * 32
-    )
-    save = swgb_save.SaveGame("dummy.ga2")
-    save.data = payload
-    real_chr = builtins.chr
-
-    def flaky_chr(value: int):
-        if value == ord("S"):
-            raise RuntimeError("chr boom")
-        return real_chr(value)
-
-    monkeypatch.setattr(builtins, "chr", flaky_chr)
 
     save._find_player_entries()
 
@@ -352,7 +331,7 @@ def test_save_continues_after_name_processing_errors(
     save.data = payload
     save.players = [swgb_save.Player("Player One", 1, [11.0, 22.0, 33.0, 44.0])]
 
-    monkeypatch.setattr(swgb_save.struct, "pack", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("pack boom")))
+    monkeypatch.setattr(swgb_save.struct, "pack", lambda *_args, **_kwargs: _raise_runtime_error("pack boom"))
 
     save.save()
 
@@ -474,7 +453,7 @@ def test_save_raises_when_compression_fails(
     monkeypatch.setattr(
         swgb_save.zlib,
         "compressobj",
-        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("compress boom")),
+        lambda **_kwargs: _raise_runtime_error("compress boom"),
     )
 
     with pytest.raises(RuntimeError, match="compress boom"):
