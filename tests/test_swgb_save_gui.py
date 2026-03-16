@@ -1,4 +1,4 @@
-from __future__ import absolute_import, annotations, division
+from __future__ import absolute_import, division
 
 import importlib
 import runpy
@@ -364,7 +364,7 @@ def test_load_save_surfaces_read_errors(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
     class BrokenSaveGame:
         def __init__(self, _filename: str):
-            self.players: list[object] = []
+            self.players: List[object] = []
 
         def read(self):
             raise RuntimeError("parse boom")

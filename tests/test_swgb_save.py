@@ -1,4 +1,4 @@
-from __future__ import absolute_import, annotations, division
+from __future__ import absolute_import, division
 
 # mypy: disable-error-code=assignment
 
