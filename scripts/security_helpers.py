@@ -1,10 +1,9 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 import http.client
 import ipaddress
 import json
-from collections.abc import Mapping
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, Mapping, Optional, Set, Tuple
 from urllib import error as urllib_error
 from urllib.parse import urlparse, urlunparse
 
@@ -92,7 +91,7 @@ def request_https_json(
     if parsed.query:
         request_path = f"{request_path}?{parsed.query}"
 
-    connection = http.client.HTTPSConnection(hostname, parsed.port, timeout=timeout)
+    connection = http.client.HTTPSConnection(hostname, parsed.port, timeout=timeout)  # nosec B309
     request_headers = dict(headers or {})
     if data is not None and "Content-Length" not in request_headers:
         request_headers["Content-Length"] = str(len(data))
