@@ -1,6 +1,5 @@
 # mypy: disable-error-code=assignment
 
-import io
 import runpy
 import struct
 import sys

@@ -112,7 +112,7 @@ class SaveGame:
                         else:
                             valid_sequence = False
                             break
-                    except:
+                    except struct.error:
                         valid_sequence = False
                         break
                 
@@ -148,7 +148,7 @@ class SaveGame:
                                             name = test_name
                                             print(f"Found name '{name}' at offset {name_start}")
                                             break
-                            except:
+                            except Exception:
                                 continue
                         # Also look for names directly
                         elif i + 4 <= search_end:  # Need at least 4 bytes for a name
@@ -174,7 +174,7 @@ class SaveGame:
                                             name = test_name
                                             print(f"Found name '{name}' at offset {i}")
                                             break
-                            except:
+                            except Exception:
                                 continue
                     
                     print(f"\nFound player {player_num} at {pattern_pos}")
@@ -257,7 +257,7 @@ class SaveGame:
                                             break
                                     if found_player:
                                         break
-                        except:
+                        except Exception:
                             continue
                     
                     # Method 2: Look for direct name match
@@ -306,7 +306,7 @@ class SaveGame:
                                             break
                                     if found_player:
                                         break
-                        except:
+                        except Exception:
                             continue
             except Exception as e:
                 print(f"Warning: Error processing pattern at {pattern_pos}: {e}")

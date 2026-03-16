@@ -285,7 +285,7 @@ def test_save_game_gui_loads_browse_edit_and_save_flows(
     app.browse_file()
     assert app.file_path.get() == dialog_state["filename"]
 
-    stale_row = app.tree.insert("", "end", values=["stale"])
+    app.tree.insert("", "end", values=["stale"])
     app.load_save()
     tree_items = app.tree.get_children()
     assert len(tree_items) == 1
