@@ -1,17 +1,19 @@
-from __future__ import annotations
+from __future__ import absolute_import
 
+import http.client
 import ipaddress
 import json
-import urllib.request
 from collections.abc import Mapping
+from typing import Dict, Optional, Set, Tuple
+from urllib import error as urllib_error
 from urllib.parse import urlparse, urlunparse
 
 
 def normalize_https_url(
     raw_url: str,
     *,
-    allowed_hosts: set[str] | None = None,
-    allowed_host_suffixes: set[str] | None = None,
+    allowed_hosts: Optional[Set[str]] = None,
+    allowed_host_suffixes: Optional[Set[str]] = None,
     strip_query: bool = False,
 ) -> str:
     """Validate user-provided URLs for CLI scripts.
@@ -66,14 +68,14 @@ def normalize_https_url(
 def request_https_json(
     raw_url: str,
     *,
-    headers: Mapping[str, str] | None = None,
+    headers: Optional[Mapping[str, str]] = None,
     method: str = "GET",
-    data: bytes | None = None,
-    allowed_hosts: set[str] | None = None,
-    allowed_host_suffixes: set[str] | None = None,
+    data: Optional[bytes] = None,
+    allowed_hosts: Optional[Set[str]] = None,
+    allowed_host_suffixes: Optional[Set[str]] = None,
     strip_query: bool = False,
     timeout: float = 30.0,
-) -> tuple[object, dict[str, str]]:
+) -> Tuple[object, Dict[str, str]]:
     """Fetch JSON from a validated HTTPS endpoint only."""
 
     safe_url = normalize_https_url(
@@ -82,13 +84,38 @@ def request_https_json(
         allowed_host_suffixes=allowed_host_suffixes,
         strip_query=strip_query,
     )
-    request = urllib.request.Request(
-        safe_url,
-        headers=dict(headers or {}),
-        method=method,
-        data=data,
-    )
-    with urllib.request.urlopen(request, timeout=timeout) as response:  # nosec B310
-        body = json.loads(response.read().decode("utf-8"))
-        response_headers = {key.lower(): value for key, value in response.headers.items()}
+    parsed = urlparse(safe_url)
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("Validated URL is missing a hostname.")
+    request_path = parsed.path or "/"
+    if parsed.query:
+        request_path = f"{request_path}?{parsed.query}"
+
+    connection = http.client.HTTPSConnection(hostname, parsed.port, timeout=timeout)
+    request_headers = dict(headers or {})
+    if data is not None and "Content-Length" not in request_headers:
+        request_headers["Content-Length"] = str(len(data))
+    connection.request(method, request_path, body=data, headers=request_headers)
+    response = connection.getresponse()
+    try:
+        response_body = response.read()
+        response_message = response.msg
+        response_headers = {key.lower(): value for key, value in response.getheaders()}
+    finally:
+        connection.close()
+
+    if response.status >= 400:
+        raise urllib_error.HTTPError(
+            safe_url,
+            response.status,
+            response.reason,
+            response_message,
+            None,
+        )
+
+    try:
+        body = json.loads(response_body.decode("utf-8"))
+    except UnicodeDecodeError as exc:
+        raise ValueError("Response body is not valid UTF-8 JSON.") from exc
     return body, response_headers

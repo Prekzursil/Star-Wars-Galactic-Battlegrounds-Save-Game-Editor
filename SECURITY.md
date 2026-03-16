@@ -17,6 +17,7 @@ Use GitHub Private Vulnerability Reporting for this repository:
 Do not open public GitHub issues for undisclosed security vulnerabilities.
 
 When reporting, include:
+
 - A clear description of the issue and affected components.
 - Reproduction steps or proof-of-concept details.
 - Impact assessment, including confidentiality, integrity, and availability impact.

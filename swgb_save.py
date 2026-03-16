@@ -1,11 +1,11 @@
-from __future__ import annotations
+from __future__ import absolute_import
 
 import os
 import shutil
 import struct
 import zlib
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Optional, Set, Tuple
 
 
 PLAYER_PATTERN = bytes.fromhex("16db00000021")
@@ -16,6 +16,7 @@ MIN_DIRECT_NAME_LENGTH = 4
 RESOURCE_COUNT = 4
 RESOURCE_VALUE_MAX = 100000.0
 NO_SAVE_DATA_LOADED = "No save data loaded"
+PLAYER_ENTRY_ERRORS = (RuntimeError, ValueError, TypeError, UnicodeDecodeError, struct.error)
 
 
 @dataclass
@@ -40,9 +41,9 @@ class SaveGame:
     def __init__(self, filename: str):
         """Initialize with save file path."""
         self.filename = filename
-        self.data: bytes | None = None
+        self.data: Optional[bytes] = None
         self.players: List[Player] = []
-        self.wbits: int | None = None
+        self.wbits: Optional[int] = None
 
     def read(self) -> None:
         """Read and decompress the save file."""
@@ -80,7 +81,8 @@ class SaveGame:
             result.append(f"{offset + index:08x}: {hex_part} |{ascii_part}|")
         return "\n".join(result)
 
-    def _search_window(self, pattern_pos: int) -> tuple[int, int]:
+    @staticmethod
+    def _search_window(pattern_pos: int) -> Tuple[int, int]:
         return max(0, pattern_pos - NAME_SEARCH_WINDOW), pattern_pos
 
     def _find_null_terminated_end(self, start: int, limit: int) -> int:
@@ -94,20 +96,26 @@ class SaveGame:
     def _is_name_byte(byte_value: int) -> bool:
         return byte_value == 32 or 48 <= byte_value <= 57 or 65 <= byte_value <= 90 or 97 <= byte_value <= 122
 
-    def _decode_candidate_name(self, start: int, end: int, *, min_length: int) -> str | None:
+    @staticmethod
+    def _is_valid_candidate_name(candidate: str, min_length: int) -> bool:
+        return (
+            len(candidate) >= min_length
+            and candidate.isprintable()
+            and all(character.isalnum() or character.isspace() for character in candidate)
+        )
+
+    def _decode_candidate_name(self, start: int, end: int, *, min_length: int) -> Optional[str]:
         if self.data is None or end <= start:
             return None
         try:
             candidate = self.data[start:end].decode("ascii").strip()
         except UnicodeDecodeError:
             return None
-        if len(candidate) < min_length or not candidate.isprintable():
-            return None
-        if not all(character.isalnum() or character.isspace() for character in candidate):
+        if not self._is_valid_candidate_name(candidate, min_length):
             return None
         return candidate
 
-    def _name_from_marker(self, offset: int, search_end: int) -> str | None:
+    def _name_from_marker(self, offset: int, search_end: int) -> Optional[str]:
         if self.data is None or offset + 1 >= len(self.data):
             return None
         if self.data[offset] != 0x09 or self.data[offset + 1] != 0x00:
@@ -116,7 +124,7 @@ class SaveGame:
         name_end = self._find_null_terminated_end(name_start, search_end)
         return self._decode_candidate_name(name_start, name_end, min_length=MIN_MARKER_NAME_LENGTH)
 
-    def _name_from_direct_scan(self, offset: int, search_end: int) -> str | None:
+    def _name_from_direct_scan(self, offset: int, search_end: int) -> Optional[str]:
         if self.data is None or offset + MIN_DIRECT_NAME_LENGTH > search_end:
             return None
         name_end = offset
@@ -150,11 +158,11 @@ class SaveGame:
                 return direct_name
         return default_name
 
-    def _read_resource_values(self, pattern_pos: int) -> list[float] | None:
+    def _read_resource_values(self, pattern_pos: int) -> Optional[List[float]]:
         if self.data is None:
             return None
         resource_start = pattern_pos + len(PLAYER_PATTERN)
-        values: list[float] = []
+        values: List[float] = []
         for index in range(RESOURCE_COUNT):
             chunk = self.data[resource_start + index * 4 : resource_start + (index + 1) * 4]
             try:
@@ -167,10 +175,10 @@ class SaveGame:
         return values
 
     @staticmethod
-    def _reorder_resources(values: list[float]) -> list[float]:
+    def _reorder_resources(values: List[float]) -> List[float]:
         return [values[1], values[0], values[2], values[3]]
 
-    def _build_entry(self, pattern_pos: int, name: str, player_num: int) -> tuple[int, str, int, bytes]:
+    def _build_entry(self, pattern_pos: int, name: str, player_num: int) -> Tuple[int, str, int, bytes]:
         if self.data is None:
             return pattern_pos, name, player_num, b""
         resource_start = pattern_pos + len(PLAYER_PATTERN)
@@ -218,25 +226,27 @@ class SaveGame:
                 player = Player(name, player_num, self._reorder_resources(values))
                 self.players.append(player)
                 entries.append(self._build_entry(pattern_pos, name, player_num))
-            except Exception as exc:
+            except PLAYER_ENTRY_ERRORS as exc:
                 print(f"Error processing pattern at {pattern_pos}: {exc}")
 
             pos = pattern_pos + 1
 
         return entries
 
-    def _match_player(self, candidate_name: str, updated_players: set[str]) -> Player | None:
+    def _match_player(self, candidate_name: str, updated_players: Set[str]) -> Optional[Player]:
         for player in self.players:
             if player.name == candidate_name and player.name not in updated_players:
                 return player
         return None
 
-    def _write_resources(self, data: bytearray, resource_start: int, resources: list[float]) -> None:
+    @staticmethod
+    def _write_resources(data: bytearray, resource_start: int, resources: List[float]) -> None:
         for index, value in enumerate(resources):
             value_bytes = struct.pack("<f", value)
             data[resource_start + index * 4 : resource_start + (index + 1) * 4] = value_bytes
 
-    def _verify_written_resources(self, data: bytearray, resource_start: int, resources: list[float]) -> None:
+    @staticmethod
+    def _verify_written_resources(data: bytearray, resource_start: int, resources: List[float]) -> None:
         print("\nVerifying resource values:")
         for index, expected_value in enumerate(resources):
             actual_value = struct.unpack("<f", data[resource_start + index * 4 : resource_start + (index + 1) * 4])[0]
@@ -244,7 +254,7 @@ class SaveGame:
             if abs(actual_value - expected_value) > 0.01:
                 print("WARNING: Resource value mismatch!")
 
-    def _update_matching_player(self, pattern_pos: int, data: bytearray, updated_players: set[str]) -> bool:
+    def _update_matching_player(self, pattern_pos: int, data: bytearray, updated_players: Set[str]) -> bool:
         candidate_name = self._find_name_before_pattern(
             pattern_pos,
             default_name="",
@@ -273,7 +283,33 @@ class SaveGame:
         updated_players.add(player.name)
         return True
 
-    def save(self, filename: str | None = None) -> None:
+    @staticmethod
+    def _create_backup_if_missing(filename: str) -> None:
+        backup_path = filename + ".backup"
+        if not os.path.exists(backup_path):
+            shutil.copy2(filename, backup_path)
+            print(f"Created backup: {backup_path}")
+
+    @staticmethod
+    def _compress_save_data(payload: bytes) -> bytes:
+        compressor = zlib.compressobj(
+            level=9,
+            method=zlib.DEFLATED,
+            wbits=-15,
+            memLevel=9,
+            strategy=zlib.Z_DEFAULT_STRATEGY,
+        )
+        compressed = compressor.compress(payload)
+        compressed += compressor.flush()
+        return compressed
+
+    @staticmethod
+    def _write_compressed_file(filename: str, compressed: bytes) -> None:
+        with open(filename, "wb") as file_handle:
+            file_handle.write(compressed)
+        print(f"Saved changes to: {filename}")
+
+    def save(self, filename: Optional[str] = None) -> None:
         """Save changes to file."""
         if self.data is None:
             raise ValueError(NO_SAVE_DATA_LOADED)
@@ -282,7 +318,7 @@ class SaveGame:
             filename = self.filename
 
         data = bytearray(self.data)
-        updated_players: set[str] = set()
+        updated_players: Set[str] = set()
         pos = 0
 
         while pos < len(self.data) - 32:
@@ -291,7 +327,7 @@ class SaveGame:
                 break
             try:
                 self._update_matching_player(pattern_pos, data, updated_players)
-            except Exception as exc:
+            except PLAYER_ENTRY_ERRORS as exc:
                 print(f"Warning: Error processing pattern at {pattern_pos}: {exc}")
             pos = pattern_pos + 1
 
@@ -301,32 +337,19 @@ class SaveGame:
 
         self.data = bytes(data)
 
-        backup_path = filename + ".backup"
-        if not os.path.exists(backup_path):
-            shutil.copy2(filename, backup_path)
-            print(f"Created backup: {backup_path}")
+        self._create_backup_if_missing(filename)
 
         print("\nAnalyzing original file format...")
         with open(filename, "rb") as file_handle:
             original = file_handle.read()
 
         try:
-            compressor = zlib.compressobj(
-                level=9,
-                method=zlib.DEFLATED,
-                wbits=-15,
-                memLevel=9,
-                strategy=zlib.Z_DEFAULT_STRATEGY,
-            )
-            compressed = compressor.compress(self.data)
-            compressed += compressor.flush()
+            compressed = self._compress_save_data(self.data)
 
             print(f"Original size: {len(original):,} bytes")
             print(f"Compressed size: {len(compressed):,} bytes")
 
-            with open(filename, "wb") as file_handle:
-                file_handle.write(compressed)
-            print(f"Saved changes to: {filename}")
+            self._write_compressed_file(filename, compressed)
         except Exception as exc:
             print(f"Error saving file: {exc}")
             raise

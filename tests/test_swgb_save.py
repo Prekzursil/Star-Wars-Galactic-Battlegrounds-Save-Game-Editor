@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 # mypy: disable-error-code=assignment
 
 import runpy
@@ -40,9 +42,9 @@ def test_hex_dump_formats_offsets_and_ascii() -> None:
 
     rendered = save._hex_dump(b"AB\x00\x7f", offset=16, length=16)
 
-    assert "00000010:" in rendered
-    assert "41 42 00 7f" in rendered
-    assert "|AB..|" in rendered
+    assert "00000010:" in rendered  # nosec B101
+    assert "41 42 00 7f" in rendered  # nosec B101
+    assert "|AB..|" in rendered  # nosec B101
 
 
 def test_read_raises_when_decompression_never_succeeds(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -59,8 +61,8 @@ def test_read_raises_when_decompression_never_succeeds(tmp_path: Path, monkeypat
     with pytest.raises(ValueError, match="Failed to decompress save file"):
         save.read()
 
-    assert save.players == []
-    assert save.wbits is None
+    assert save.players == []  # nosec B101
+    assert save.wbits is None  # nosec B101
 
 
 def test_read_parses_player_resources_and_tracks_successful_wbits(
@@ -82,9 +84,9 @@ def test_read_parses_player_resources_and_tracks_successful_wbits(
     save = swgb_save.SaveGame(str(path))
     save.read()
 
-    assert calls == [zlib.MAX_WBITS, 15, -15]
-    assert save.wbits == -15
-    assert [(player.name, player.index, player.resources) for player in save.players] == [
+    assert calls == [zlib.MAX_WBITS, 15, -15]  # nosec B101
+    assert save.wbits == -15  # nosec B101
+    assert [(player.name, player.index, player.resources) for player in save.players] == [  # nosec B101
         ("Player One", 1, [20.0, 10.0, 30.0, 40.0])
     ]
 
@@ -102,12 +104,12 @@ def test_save_updates_resources_creates_backup_and_writes_compressed_bytes(tmp_p
     save.save()
 
     backup_path = path.with_suffix(path.suffix + ".backup")
-    assert backup_path.exists()
+    assert backup_path.exists()  # nosec B101
     restored = zlib.decompress(path.read_bytes(), -15)
     pattern_pos = restored.find(bytes.fromhex("16db00000021"))
     resource_start = pattern_pos + 6
     written = struct.unpack("<ffff", restored[resource_start : resource_start + 16])
-    assert written == pytest.approx((11.0, 22.0, 33.0, 44.0))
+    assert written == pytest.approx((11.0, 22.0, 33.0, 44.0))  # nosec B101
 
 
 def test_print_info_lists_players(capsys: pytest.CaptureFixture[str]) -> None:
@@ -118,10 +120,10 @@ def test_print_info_lists_players(capsys: pytest.CaptureFixture[str]) -> None:
     save.print_info()
 
     captured = capsys.readouterr().out
-    assert "Save File: dummy.ga2" in captured
-    assert "Player One (Player 1)" in captured
-    assert "Food:" in captured
-    assert "Wood:" in captured
+    assert "Save File: dummy.ga2" in captured  # nosec B101
+    assert "Player One (Player 1)" in captured  # nosec B101
+    assert "Food:" in captured  # nosec B101
+    assert "Wood:" in captured  # nosec B101
 
 
 def test_print_info_requires_loaded_data() -> None:
@@ -137,9 +139,9 @@ def test_main_shows_usage_without_path(monkeypatch: pytest.MonkeyPatch, capsys: 
     with pytest.raises(SystemExit) as exc:
         swgb_save.main()
 
-    assert exc.value.code == 1
+    assert exc.value.code == 1  # nosec B101
     output = capsys.readouterr().out
-    assert "Usage: python swgb_save.py <save_file>" in output
+    assert "Usage: python swgb_save.py <save_file>" in output  # nosec B101
 
 
 def test_main_reads_and_prints_when_given_a_path(
@@ -162,8 +164,8 @@ def test_main_reads_and_prints_when_given_a_path(
 
     swgb_save.main()
 
-    assert events == [("init", "example.ga2"), ("read", ""), ("print_info", "")]
-    assert capsys.readouterr().out == ""
+    assert events == [("init", "example.ga2"), ("read", ""), ("print_info", "")]  # nosec B101
+    assert capsys.readouterr().out == ""  # nosec B101
 
 
 def test_read_reports_when_no_players_are_found(
@@ -176,9 +178,9 @@ def test_read_reports_when_no_players_are_found(
     save = swgb_save.SaveGame(str(path))
     save.read()
 
-    assert save.players == []
+    assert save.players == []  # nosec B101
     output = capsys.readouterr().out
-    assert "Could not find any player entries" in output
+    assert "Could not find any player entries" in output  # nosec B101
 
 
 def test_find_player_entries_handles_marker_and_direct_name_fallbacks(
@@ -200,14 +202,14 @@ def test_find_player_entries_handles_marker_and_direct_name_fallbacks(
 
     entries = save._find_player_entries()
 
-    assert [(player.name, player.resources) for player in save.players] == [
+    assert [(player.name, player.resources) for player in save.players] == [  # nosec B101
         ("Han Solo", [20.0, 10.0, 30.0, 40.0])
     ]
-    assert len(entries) == 1
-    assert entries[0][:3] == (36, "Han Solo", 1)
-    assert len(entries[0][3]) == 16
+    assert len(entries) == 1  # nosec B101
+    assert entries[0][:3] == (36, "Han Solo", 1)  # nosec B101
+    assert len(entries[0][3]) == 16  # nosec B101
     output = capsys.readouterr().out
-    assert "Found name 'Han Solo'" in output
+    assert "Found name 'Han Solo'" in output  # nosec B101
 
 
 def test_find_player_entries_handles_direct_name_decode_errors() -> None:
@@ -218,33 +220,33 @@ def test_find_player_entries_handles_direct_name_decode_errors() -> None:
 
     save._find_player_entries()
 
-    assert save.players == [swgb_save.Player("Player 1", 1, [2.0, 1.0, 3.0, 4.0])]
+    assert save.players == [swgb_save.Player("Player 1", 1, [2.0, 1.0, 3.0, 4.0])]  # nosec B101
 
 
 def test_decode_candidate_name_rejects_non_alnum_characters() -> None:
     save = swgb_save.SaveGame("dummy.ga2")
     save.data = b"Han!"
 
-    assert save._decode_candidate_name(0, 4, min_length=3) is None
+    assert save._decode_candidate_name(0, 4, min_length=3) is None  # nosec B101
 
 
 def test_name_from_marker_returns_none_when_offset_exceeds_data() -> None:
     save = swgb_save.SaveGame("dummy.ga2")
     save.data = b"\x09"
 
-    assert save._name_from_marker(0, 1) is None
+    assert save._name_from_marker(0, 1) is None  # nosec B101
 
 
 def test_read_resource_values_returns_none_without_loaded_data() -> None:
     save = swgb_save.SaveGame("dummy.ga2")
 
-    assert save._read_resource_values(0) is None
+    assert save._read_resource_values(0) is None  # nosec B101
 
 
 def test_build_entry_uses_empty_payload_without_loaded_data() -> None:
     save = swgb_save.SaveGame("dummy.ga2")
 
-    assert save._build_entry(12, "Player One", 1) == (12, "Player One", 1, b"")
+    assert save._build_entry(12, "Player One", 1) == (12, "Player One", 1, b"")  # nosec B101
 
 
 def test_find_player_entries_skips_out_of_range_resource_sequences() -> None:
@@ -255,7 +257,7 @@ def test_find_player_entries_skips_out_of_range_resource_sequences() -> None:
 
     save._find_player_entries()
 
-    assert save.players == []
+    assert save.players == []  # nosec B101
 
 
 def test_find_player_entries_handles_unpack_errors(
@@ -278,7 +280,7 @@ def test_find_player_entries_handles_unpack_errors(
 
     save._find_player_entries()
 
-    assert save.players == []
+    assert save.players == []  # nosec B101
 
 
 def test_find_player_entries_logs_processing_errors(
@@ -296,13 +298,13 @@ def test_find_player_entries_logs_processing_errors(
 
     save._find_player_entries()
 
-    assert "Error processing pattern" in capsys.readouterr().out
+    assert "Error processing pattern" in capsys.readouterr().out  # nosec B101
 
 
 def test_find_player_entries_returns_empty_without_loaded_data() -> None:
     save = swgb_save.SaveGame("dummy.ga2")
 
-    assert save._find_player_entries() == []
+    assert save._find_player_entries() == []  # nosec B101
 
 
 def test_save_updates_via_direct_name_match_and_warns_for_missing_players(
@@ -331,12 +333,12 @@ def test_save_updates_via_direct_name_match_and_warns_for_missing_players(
     restored = zlib.decompress(path.read_bytes(), -15)
     pattern_pos = restored.find(bytes.fromhex("16db00000021"))
     resource_start = pattern_pos + 6
-    assert struct.unpack("<ffff", restored[resource_start : resource_start + 16]) == pytest.approx(
+    assert struct.unpack("<ffff", restored[resource_start : resource_start + 16]) == pytest.approx(  # nosec B101
         (11.0, 22.0, 33.0, 44.0)
     )
     output = capsys.readouterr().out
-    assert "Found potential name (direct): 'Han Solo'" in output
-    assert "Warning: Could not update resources for players: {'Leia'}" in output
+    assert "Found potential name (direct): 'Han Solo'" in output  # nosec B101
+    assert "Warning: Could not update resources for players: {'Leia'}" in output  # nosec B101
 
 
 def test_save_requires_loaded_data(tmp_path: Path) -> None:
@@ -362,7 +364,7 @@ def test_save_continues_after_name_processing_errors(
     save.save()
 
     output = capsys.readouterr().out
-    assert "Warning: Could not update resources for players" in output
+    assert "Warning: Could not update resources for players" in output  # nosec B101
 
 
 def test_update_matching_player_requires_loaded_data() -> None:
@@ -401,7 +403,7 @@ def test_save_logs_mismatched_written_values_for_direct_name_updates(
 
     save.save()
 
-    assert "WARNING: Resource value mismatch!" in capsys.readouterr().out
+    assert "WARNING: Resource value mismatch!" in capsys.readouterr().out  # nosec B101
 
 
 def test_save_handles_invalid_direct_name_characters(
@@ -424,7 +426,7 @@ def test_save_handles_invalid_direct_name_characters(
 
     save.save()
 
-    assert "Warning: Could not update resources for players: {'Han'}" in capsys.readouterr().out
+    assert "Warning: Could not update resources for players: {'Han'}" in capsys.readouterr().out  # nosec B101
 
 
 def test_save_skips_direct_name_candidates_with_invalid_characters(
@@ -470,9 +472,9 @@ def test_save_logs_outer_processing_warning_when_search_setup_fails(
     monkeypatch.setattr(builtins, "max", flaky_max)
 
     save.save()
-    assert builtins.max(1, 2) == 2
+    assert builtins.max(1, 2) == 2  # nosec B101
 
-    assert "Warning: Error processing pattern" in capsys.readouterr().out
+    assert "Warning: Error processing pattern" in capsys.readouterr().out  # nosec B101
 
 
 def test_save_raises_when_compression_fails(
@@ -495,7 +497,7 @@ def test_save_raises_when_compression_fails(
     with pytest.raises(RuntimeError, match="compress boom"):
         save.save()
 
-    assert "Error saving file: compress boom" in capsys.readouterr().out
+    assert "Error saving file: compress boom" in capsys.readouterr().out  # nosec B101
 
 
 def test_main_reports_errors_when_read_fails(
@@ -520,8 +522,8 @@ def test_main_reports_errors_when_read_fails(
     with pytest.raises(SystemExit) as exc:
         swgb_save.main()
 
-    assert exc.value.code == 1
-    assert "Error: boom" in capsys.readouterr().out
+    assert exc.value.code == 1  # nosec B101
+    assert "Error: boom" in capsys.readouterr().out  # nosec B101
 
 
 def test_running_swgb_save_as_main_executes_entrypoint(
@@ -534,5 +536,5 @@ def test_running_swgb_save_as_main_executes_entrypoint(
     runpy.run_path(str(Path(swgb_save.__file__)), run_name="__main__")
 
     output = capsys.readouterr().out
-    assert "Save File:" in output
-    assert "Player One" in output
+    assert "Save File:" in output  # nosec B101
+    assert "Player One" in output  # nosec B101
