@@ -56,6 +56,7 @@ class FakeWidget:
 
     @staticmethod
     def set(*_args, **_kwargs):
+        # Test double: Tk scrollbars call into this, but the fake widget ignores it.
         pass
 
 
@@ -109,14 +110,17 @@ class FakeTreeview(FakeWidget):
 
     @staticmethod
     def heading(*_args, **_kwargs):
+        # Test double: column headings are irrelevant to the GUI behavior under test.
         pass
 
     @staticmethod
     def column(*_args, **_kwargs):
+        # Test double: width configuration is intentionally ignored in tests.
         pass
 
     @staticmethod
     def yview(*_args, **_kwargs):
+        # Test double: vertical scrolling state is not modeled in these tests.
         pass
 
     def insert(self, _parent, _index, values):
@@ -284,6 +288,7 @@ def test_save_game_gui_loads_browse_edit_and_save_flows(
 
         @staticmethod
         def read():
+            # Test double: loading is exercised by the GUI flow, not the fake save backend.
             pass
 
         def save(self, _filename):

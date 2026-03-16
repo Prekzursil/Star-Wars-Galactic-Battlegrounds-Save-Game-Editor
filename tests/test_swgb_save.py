@@ -520,6 +520,7 @@ def test_main_reports_errors_when_read_fails(
 ) -> None:
     class FakeSaveGame:
         def __init__(self, _filename: str):
+            # Test double: the constructor intentionally performs no I/O.
             pass
 
         def read(self) -> None:
