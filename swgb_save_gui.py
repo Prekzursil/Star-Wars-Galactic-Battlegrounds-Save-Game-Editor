@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from swgb_save import SaveGame
-import sys
 import os
 
 class EditResourceDialog:
@@ -268,7 +267,7 @@ class SaveGameGUI:
 
 def main():
     root = tk.Tk()
-    app = SaveGameGUI(root)
+    SaveGameGUI(root)
     root.mainloop()
 
 if __name__ == "__main__":

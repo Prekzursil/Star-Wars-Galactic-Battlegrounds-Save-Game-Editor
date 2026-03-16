@@ -1,4 +1,4 @@
-name: Codecov Analytics
+name: Quality Zero Platform
 
 permissions:
   contents: read
@@ -12,11 +12,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  shared-codecov-analytics:
+  shared-scanner-matrix:
     permissions:
       contents: read
       id-token: write
-    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-codecov-analytics.yml@d3aabc77c858e27cb7ade824e9fbf3dd9203f256
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-scanner-matrix.yml@d3aabc77c858e27cb7ade824e9fbf3dd9203f256
     with:
       repo_slug: ${{ github.repository }}
       event_name: ${{ github.event_name }}
@@ -24,5 +24,9 @@ jobs:
       platform_repository: Prekzursil/quality-zero-platform
       platform_ref: main
     secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      DEEPSCAN_API_TOKEN: ${{ secrets.DEEPSCAN_API_TOKEN }}
 

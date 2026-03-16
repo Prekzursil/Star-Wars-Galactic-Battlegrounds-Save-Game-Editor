@@ -1,0 +1,26 @@
+name: Quality Zero Remediation
+
+permissions: {}
+
+on:
+  # zizmor: ignore[dangerous-triggers] trusted same-repo remediation entrypoint gated by Quality Zero Gate
+  workflow_run:
+    workflows: ["Quality Zero Gate"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  remediate:
+    permissions:
+      contents: write
+      pull-requests: write
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure' }}
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-remediation-loop.yml@cb067b5a04b596deef983f93eac95f227b9dc09c
+    with:
+      repo_slug: ${{ github.repository }}
+      failure_context: Quality Zero Gate
+      sha: ${{ github.event.workflow_run.head_sha || github.sha }}
+      platform_repository: Prekzursil/quality-zero-platform
+      platform_ref: main
+    secrets:
+      CODEX_AUTH_JSON: ${{ secrets.CODEX_AUTH_JSON }}

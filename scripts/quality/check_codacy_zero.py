@@ -6,7 +6,6 @@ import json
 import sys
 import urllib.error
 import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,7 +15,7 @@ _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() els
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import normalize_https_url
+from security_helpers import normalize_https_url, request_https_json  # noqa: E402
 
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
@@ -35,7 +34,6 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _request_json(url: str, token: str, *, method: str = "GET", data: dict[str, Any] | None = None) -> dict[str, Any]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"codacy.com"}).rstrip("/")
     body = None
     headers = {
         "Accept": "application/json",
@@ -45,14 +43,16 @@ def _request_json(url: str, token: str, *, method: str = "GET", data: dict[str, 
     if data is not None:
         body = json.dumps(data).encode("utf-8")
         headers["Content-Type"] = "application/json"
-    req = urllib.request.Request(
-        safe_url,
+    payload, _ = request_https_json(
+        url.rstrip("/"),
         headers=headers,
         method=method,
         data=body,
+        allowed_host_suffixes={"codacy.com"},
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected Codacy response payload")
+    return payload
 
 
 def extract_total_open(payload: Any) -> int | None:

@@ -5,7 +5,6 @@ import argparse
 import json
 import sys
 import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -15,7 +14,7 @@ _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() els
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import normalize_https_url
+from security_helpers import normalize_https_url, request_https_json  # noqa: E402
 
 SENTRY_API_BASE = "https://sentry.io/api/0"
 
@@ -36,19 +35,16 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"sentry.io"})
-    req = urllib.request.Request(
-        safe_url,
+    body, headers = request_https_json(
+        url,
         headers={
             "Accept": "application/json",
             "Authorization": f"Bearer {token}",
             "User-Agent": "reframe-sentry-zero-gate",
         },
         method="GET",
+        allowed_host_suffixes={"sentry.io"},
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        body = json.loads(resp.read().decode("utf-8"))
-        headers = {k.lower(): v for k, v in resp.headers.items()}
     if not isinstance(body, list):
         raise RuntimeError("Unexpected Sentry response payload")
     return body, headers
