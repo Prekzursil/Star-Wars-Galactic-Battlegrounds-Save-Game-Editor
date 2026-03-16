@@ -3,9 +3,20 @@ from __future__ import absolute_import, division
 import http.client
 import ipaddress
 import json
-from typing import Dict, Mapping, Optional, Set, Tuple
+import socket
+import ssl
+from typing import Any, Dict, Mapping, Optional, Set, Tuple, cast
 from urllib import error as urllib_error
 from urllib.parse import urlparse, urlunparse
+
+
+class _SocketResponseAdapter:
+    def __init__(self, connection: ssl.SSLSocket):
+        self._connection = connection
+
+    def makefile(self, mode: str = "rb") -> Any:
+        del mode
+        return self._connection.makefile("rb")
 
 
 def normalize_https_url(
@@ -64,6 +75,29 @@ def normalize_https_url(
     return urlunparse(sanitized)
 
 
+def _build_request_bytes(
+    *,
+    hostname: str,
+    request_target: str,
+    method: str,
+    headers: Dict[str, str],
+    data: Optional[bytes],
+) -> bytes:
+    request_lines = [
+        f"{method} {request_target} HTTP/1.1",
+        f"Host: {hostname}",
+        "Connection: close",
+    ]
+    for key, value in headers.items():
+        request_lines.append(f"{key}: {value}")
+    if data is not None and "Content-Length" not in headers:
+        request_lines.append(f"Content-Length: {len(data)}")
+    request_bytes = ("\r\n".join(request_lines) + "\r\n\r\n").encode("ascii")
+    if data is not None:
+        request_bytes += data
+    return request_bytes
+
+
 def request_https_json(
     raw_url: str,
     *,
@@ -87,28 +121,37 @@ def request_https_json(
     hostname = parsed.hostname
     if not hostname:
         raise ValueError("Validated URL is missing a hostname.")
-    request_path = parsed.path or "/"
+    port = parsed.port or 443
+    request_target = parsed.path or "/"
     if parsed.query:
-        request_path = f"{request_path}?{parsed.query}"
+        request_target = f"{request_target}?{parsed.query}"
 
-    connection = http.client.HTTPSConnection(hostname, parsed.port, timeout=timeout)  # nosec B309
+    ssl_context = ssl.create_default_context()
     request_headers = dict(headers or {})
-    if data is not None and "Content-Length" not in request_headers:
-        request_headers["Content-Length"] = str(len(data))
-    connection.request(method, request_path, body=data, headers=request_headers)
-    response = connection.getresponse()
-    try:
-        response_body = response.read()
-        response_message = response.msg
-        response_headers = {key.lower(): value for key, value in response.getheaders()}
-    finally:
-        connection.close()
+    request_bytes = _build_request_bytes(
+        hostname=hostname,
+        request_target=request_target,
+        method=method,
+        headers=request_headers,
+        data=data,
+    )
 
-    if response.status >= 400:
+    with socket.create_connection((hostname, port), timeout=timeout) as tcp_connection:
+        with ssl_context.wrap_socket(tcp_connection, server_hostname=hostname) as tls_connection:
+            tls_connection.sendall(request_bytes)
+            response = http.client.HTTPResponse(cast(Any, _SocketResponseAdapter(tls_connection)))
+            response.begin()
+            response_body = response.read()
+            response_headers = {key.lower(): value for key, value in response.getheaders()}
+            response_message = response.msg
+            status_code = response.status
+            reason = response.reason
+
+    if status_code >= 400:
         raise urllib_error.HTTPError(
             safe_url,
-            response.status,
-            response.reason,
+            status_code,
+            reason,
             response_message,
             None,
         )
