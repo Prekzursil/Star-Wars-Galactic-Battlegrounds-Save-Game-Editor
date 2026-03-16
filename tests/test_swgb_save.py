@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 # mypy: disable-error-code=assignment
 
@@ -8,13 +8,14 @@ import sys
 import zlib
 import builtins
 from pathlib import Path
+from typing import List, Tuple
 
 import pytest
 
 import swgb_save
 
 
-def _player_blob(name: str, values: tuple[float, float, float, float]) -> bytes:
+def _player_blob(name: str, values: Tuple[float, float, float, float]) -> bytes:
     pattern = bytes.fromhex("16db00000021")
     return (
         b"\x00" * 8
@@ -71,7 +72,7 @@ def test_read_parses_player_resources_and_tracks_successful_wbits(
     path = tmp_path / "player.ga2"
     path.write_bytes(b"compressed-placeholder")
     payload = _player_blob("Player One", (10.0, 20.0, 30.0, 40.0))
-    calls: list[int] = []
+    calls: List[int] = []
 
     def fake_decompress(_data: bytes, wbits: int) -> bytes:
         calls.append(wbits)
@@ -147,7 +148,7 @@ def test_main_shows_usage_without_path(monkeypatch: pytest.MonkeyPatch, capsys: 
 def test_main_reads_and_prints_when_given_a_path(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    events: list[tuple[str, str]] = []
+    events: List[Tuple[str, str]] = []
 
     class FakeSaveGame:
         def __init__(self, filename: str):
