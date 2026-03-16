@@ -369,9 +369,9 @@ def test_load_save_surfaces_read_errors(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
     class BrokenSaveGame:
         def __init__(self, _filename: str):
-            self.players: List[object] = []
+            self.players: list[object] = []
 
-        def read(self):
+        def read(self) -> None:
             raise RuntimeError("parse boom")
 
     monkeypatch.setattr(gui, "SaveGame", BrokenSaveGame)
