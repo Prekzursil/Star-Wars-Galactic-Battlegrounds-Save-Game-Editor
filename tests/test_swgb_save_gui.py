@@ -5,6 +5,7 @@ import runpy
 import sys
 import types
 from pathlib import Path
+from typing import Dict, List, Tuple
 
 import pytest
 
@@ -142,12 +143,12 @@ def test_fake_widget_helpers_are_noops() -> None:
     widget = FakeWidget()
     tree = FakeTreeview()
 
-    assert widget.set("a", "b") is None
-    assert tree.yview("moveto", 0) is None
+    assert widget.set("a", "b") is None  # nosec B101
+    assert tree.yview("moveto", 0) is None  # nosec B101
 
 
 def install_fake_tk(monkeypatch: pytest.MonkeyPatch):
-    message_calls: dict[str, list[tuple[str, str]]] = {"error": [], "warning": [], "info": []}
+    message_calls: Dict[str, List[Tuple[str, str]]] = {"error": [], "warning": [], "info": []}
     dialog_state = {"filename": ""}
 
     ttk_module = types.ModuleType("tkinter.ttk")
@@ -170,7 +171,7 @@ def install_fake_tk(monkeypatch: pytest.MonkeyPatch):
     setattr(messagebox_module, "showinfo", lambda *args: message_calls["info"].append(args))
 
     tk_module = types.ModuleType("tkinter")
-    tk_members: dict[str, object] = {
+    tk_members: Dict[str, object] = {
         "Tk": FakeRoot,
         "Toplevel": FakeRoot,
         "StringVar": FakeStringVar,
@@ -211,9 +212,9 @@ def test_edit_resource_dialog_accepts_valid_values(monkeypatch: pytest.MonkeyPat
 
     dialog.ok()
 
-    assert dialog.result == [10.0, 20.0, 30.0, 40.0]
-    assert dialog.dialog.destroyed is True
-    assert message_calls["error"] == []
+    assert dialog.result == [10.0, 20.0, 30.0, 40.0]  # nosec B101
+    assert dialog.dialog.destroyed is True  # nosec B101
+    assert message_calls["error"] == []  # nosec B101
 
 
 def test_edit_resource_dialog_rejects_invalid_values(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -224,9 +225,9 @@ def test_edit_resource_dialog_rejects_invalid_values(monkeypatch: pytest.MonkeyP
 
     dialog.ok()
 
-    assert dialog.result is None
-    assert dialog.dialog.destroyed is False
-    assert message_calls["error"]
+    assert dialog.result is None  # nosec B101
+    assert dialog.dialog.destroyed is False  # nosec B101
+    assert message_calls["error"]  # nosec B101
 
 
 def test_edit_resource_dialog_handles_unexpected_errors(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -242,9 +243,9 @@ def test_edit_resource_dialog_handles_unexpected_errors(monkeypatch: pytest.Monk
 
     dialog.ok()
 
-    assert dialog.result is None
-    assert dialog.dialog.destroyed is False
-    assert message_calls["error"][-1] == ("Error", "Failed to save changes: boom")
+    assert dialog.result is None  # nosec B101
+    assert dialog.dialog.destroyed is False  # nosec B101
+    assert message_calls["error"][-1] == ("Error", "Failed to save changes: boom")  # nosec B101
 
 
 def test_edit_resource_dialog_cancel_closes_dialog(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -253,7 +254,7 @@ def test_edit_resource_dialog_cancel_closes_dialog(monkeypatch: pytest.MonkeyPat
     dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One", [1.0, 2.0, 3.0, 4.0])
     dialog.cancel()
 
-    assert dialog.dialog.destroyed is True
+    assert dialog.dialog.destroyed is True  # nosec B101
 
 
 def test_save_game_gui_loads_browse_edit_and_save_flows(
@@ -285,18 +286,18 @@ def test_save_game_gui_loads_browse_edit_and_save_flows(
     dialog_state["filename"] = str(tmp_path / "save.ga2")
     Path(dialog_state["filename"]).write_bytes(b"save-bytes")
     app.browse_file()
-    assert app.file_path.get() == dialog_state["filename"]
+    assert app.file_path.get() == dialog_state["filename"]  # nosec B101
 
     app.tree.insert("", "end", values=["stale"])
     app.load_save()
     tree_items = app.tree.get_children()
-    assert len(tree_items) == 1
-    assert app.tree.item(tree_items[0])["values"][0] != "stale"
-    assert app.scrollbar.set("ignored") is None
-    assert app.tree.yview() is None
-    assert app.edit_button.state == gui.tk.NORMAL
-    assert app.save_button.state == gui.tk.NORMAL
-    assert "Loaded 1 players" in app.status_var.get()
+    assert len(tree_items) == 1  # nosec B101
+    assert app.tree.item(tree_items[0])["values"][0] != "stale"  # nosec B101
+    assert app.scrollbar.set("ignored") is None  # nosec B101
+    assert app.tree.yview() is None  # nosec B101
+    assert app.edit_button.state == gui.tk.NORMAL  # nosec B101
+    assert app.save_button.state == gui.tk.NORMAL  # nosec B101
+    assert "Loaded 1 players" in app.status_var.get()  # nosec B101
 
     app.tree.selection_set(tree_items[0])
 
@@ -307,12 +308,12 @@ def test_save_game_gui_loads_browse_edit_and_save_flows(
 
     monkeypatch.setattr(gui, "EditResourceDialog", FakeDialog)
     app.edit_resources()
-    assert app.current_save.players[0].resources == [100.0, 200.0, 300.0, 400.0]
-    assert "Updated resources" in app.status_var.get()
+    assert app.current_save.players[0].resources == [100.0, 200.0, 300.0, 400.0]  # nosec B101
+    assert "Updated resources" in app.status_var.get()  # nosec B101
 
     app.save_changes()
-    assert message_calls["info"]
-    assert "Changes saved successfully" in app.status_var.get()
+    assert message_calls["info"]  # nosec B101
+    assert "Changes saved successfully" in app.status_var.get()  # nosec B101
 
 
 def test_save_game_gui_handles_missing_selection_and_save_errors(
@@ -323,7 +324,7 @@ def test_save_game_gui_handles_missing_selection_and_save_errors(
     app = gui.SaveGameGUI(root)
 
     app.edit_resources()
-    assert message_calls["warning"]
+    assert message_calls["warning"]  # nosec B101
 
     class FailingSave:
         def save(self, _filename):
@@ -334,8 +335,8 @@ def test_save_game_gui_handles_missing_selection_and_save_errors(
     Path(app.file_path.get()).write_bytes(b"save")
 
     app.save_changes()
-    assert message_calls["error"]
-    assert app.status_var.get() == "Error saving changes"
+    assert message_calls["error"]  # nosec B101
+    assert app.status_var.get() == "Error saving changes"  # nosec B101
 
 
 def test_load_save_requires_a_path(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -344,7 +345,7 @@ def test_load_save_requires_a_path(monkeypatch: pytest.MonkeyPatch) -> None:
 
     app.load_save()
 
-    assert message_calls["error"]
+    assert message_calls["error"]  # nosec B101
 
 
 def test_load_save_surfaces_read_errors(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -365,8 +366,8 @@ def test_load_save_surfaces_read_errors(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
     app.load_save()
 
-    assert message_calls["error"][-1] == ("Error", "Failed to load save file: parse boom")
-    assert app.status_var.get() == "Error loading file"
+    assert message_calls["error"][-1] == ("Error", "Failed to load save file: parse boom")  # nosec B101
+    assert app.status_var.get() == "Error loading file"  # nosec B101
 
 
 def test_save_changes_returns_early_when_no_current_save(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -375,7 +376,7 @@ def test_save_changes_returns_early_when_no_current_save(monkeypatch: pytest.Mon
 
     app.save_changes()
 
-    assert message_calls == {"error": [], "warning": [], "info": []}
+    assert message_calls == {"error": [], "warning": [], "info": []}  # nosec B101
 
 
 def test_main_builds_gui_and_enters_mainloop(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -392,8 +393,8 @@ def test_main_builds_gui_and_enters_mainloop(monkeypatch: pytest.MonkeyPatch) ->
 
     gui.main()
 
-    assert captured["root"] is root
-    assert root.mainloop_called is True
+    assert captured["root"] is root  # nosec B101
+    assert root.mainloop_called is True  # nosec B101
 
 
 def test_running_swgb_save_gui_as_main_executes_entrypoint(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -403,4 +404,4 @@ def test_running_swgb_save_gui_as_main_executes_entrypoint(monkeypatch: pytest.M
 
     runpy.run_path(str(Path(gui.__file__)), run_name="__main__")
 
-    assert root.mainloop_called is True
+    assert root.mainloop_called is True  # nosec B101
