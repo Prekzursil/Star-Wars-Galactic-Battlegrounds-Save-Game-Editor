@@ -1,22 +1,67 @@
 from __future__ import absolute_import, division
 
-import http.client
 import ipaddress
 import json
-import socket
 import ssl
-from typing import Any, Dict, Mapping, Optional, Set, Tuple, cast
-from urllib import error as urllib_error
+import urllib.error
+import urllib.parse
+import urllib.request
+from email.message import Message
+from typing import Dict, Mapping, Optional, Set, Tuple
 from urllib.parse import urlparse, urlunparse
 
+_LOCAL_IP_FLAGS = ("is_private", "is_loopback", "is_link_local", "is_reserved", "is_multicast")
 
-class _SocketResponseAdapter:
-    def __init__(self, connection: ssl.SSLSocket):
-        self._connection = connection
 
-    def makefile(self, mode: str = "rb") -> Any:
-        del mode
-        return self._connection.makefile("rb")
+def _parse_https_url(raw_url: str):
+    parsed = urlparse((raw_url or "").strip())
+    if parsed.scheme != "https":
+        raise ValueError(f"Only https URLs are allowed: {raw_url!r}")
+    if not parsed.hostname:
+        raise ValueError(f"URL is missing a hostname: {raw_url!r}")
+    if parsed.username or parsed.password:
+        raise ValueError(f"URL credentials are not allowed: {raw_url!r}")
+    return parsed
+
+
+def _normalized_hosts(values: Optional[Set[str]]) -> Set[str]:
+    if not values:
+        return set()
+    return {value.lower().strip(".") for value in values if value.strip(".")}
+
+
+def _hostname_matches_suffix(hostname: str, suffixes: Set[str]) -> bool:
+    return any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes)
+
+
+def _validate_hostname_allowlists(
+    hostname: str,
+    *,
+    allowed_hosts: Optional[Set[str]] = None,
+    allowed_host_suffixes: Optional[Set[str]] = None,
+) -> None:
+    exact_hosts = _normalized_hosts(allowed_hosts)
+    if exact_hosts and hostname not in exact_hosts:
+        raise ValueError(f"URL host is not in allowlist: {hostname}")
+
+    suffixes = _normalized_hosts(allowed_host_suffixes)
+    if suffixes and not _hostname_matches_suffix(hostname, suffixes):
+        raise ValueError(f"URL host is not in suffix allowlist: {hostname}")
+
+
+def _is_local_or_private_ip(hostname: str) -> bool:
+    try:
+        ip_value = ipaddress.ip_address(hostname)
+    except ValueError:
+        return False
+    return any(bool(getattr(ip_value, flag)) for flag in _LOCAL_IP_FLAGS)
+
+
+def _reject_local_targets(hostname: str) -> None:
+    if _is_local_or_private_ip(hostname):
+        raise ValueError(f"Private or local addresses are not allowed: {hostname}")
+    if hostname in {"localhost", "localhost.localdomain"}:
+        raise ValueError("Localhost URLs are not allowed.")
 
 
 def normalize_https_url(
@@ -26,48 +71,16 @@ def normalize_https_url(
     allowed_host_suffixes: Optional[Set[str]] = None,
     strip_query: bool = False,
 ) -> str:
-    """Validate user-provided URLs for CLI scripts.
+    """Validate user-provided URLs for CLI scripts."""
 
-    Rules:
-    - https scheme only,
-    - no embedded credentials,
-    - reject localhost/private/link-local IP targets,
-    - optional hostname allowlist.
-    - optional hostname suffix allowlist.
-    """
-
-    parsed = urlparse((raw_url or "").strip())
-    if parsed.scheme != "https":
-        raise ValueError(f"Only https URLs are allowed: {raw_url!r}")
-    if not parsed.hostname:
-        raise ValueError(f"URL is missing a hostname: {raw_url!r}")
-    if parsed.username or parsed.password:
-        raise ValueError(f"URL credentials are not allowed: {raw_url!r}")
-
+    parsed = _parse_https_url(raw_url)
     hostname = parsed.hostname.lower().strip(".")
-    if allowed_hosts is not None and hostname not in {host.lower().strip(".") for host in allowed_hosts}:
-        raise ValueError(f"URL host is not in allowlist: {hostname}")
-    if allowed_host_suffixes is not None:
-        suffixes = {suffix.lower().strip(".") for suffix in allowed_host_suffixes if suffix.strip(".")}
-        if suffixes and not any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes):
-            raise ValueError(f"URL host is not in suffix allowlist: {hostname}")
-
-    try:
-        ip_value = ipaddress.ip_address(hostname)
-    except ValueError:
-        ip_value = None
-
-    if ip_value is not None and (
-        ip_value.is_private
-        or ip_value.is_loopback
-        or ip_value.is_link_local
-        or ip_value.is_reserved
-        or ip_value.is_multicast
-    ):
-        raise ValueError(f"Private or local addresses are not allowed: {hostname}")
-
-    if hostname in {"localhost", "localhost.localdomain"}:
-        raise ValueError("Localhost URLs are not allowed.")
+    _validate_hostname_allowlists(
+        hostname,
+        allowed_hosts=allowed_hosts,
+        allowed_host_suffixes=allowed_host_suffixes,
+    )
+    _reject_local_targets(hostname)
 
     sanitized = parsed._replace(fragment="", params="")
     if strip_query:
@@ -75,27 +88,58 @@ def normalize_https_url(
     return urlunparse(sanitized)
 
 
-def _build_request_bytes(
+def _build_request_target(path: str, query: Dict[str, str]) -> str:
+    query_text = urllib.parse.urlencode(query, doseq=False)
+    return path + (f"?{query_text}" if query_text else "")
+
+
+def _secure_ssl_context() -> ssl.SSLContext:
+    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+    context.check_hostname = True
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.load_default_certs(purpose=ssl.Purpose.SERVER_AUTH)
+    return context
+
+
+def _read_https_success(response) -> Tuple[int, str, str, Dict[str, str]]:
+    raw_body = response.read().decode("utf-8")
+    response_headers = {str(key).lower(): str(value) for key, value in response.headers.items()}
+    status = int(getattr(response, "status", response.getcode()))
+    reason = str(getattr(response, "reason", "") or "HTTP error")
+    return status, reason, raw_body, response_headers
+
+
+def _read_https_error(exc: urllib.error.HTTPError) -> Tuple[int, str, str, Dict[str, str]]:
+    raw_body = exc.read().decode("utf-8", errors="replace") if exc.fp is not None else ""
+    error_headers = tuple(exc.headers.items()) if exc.headers else ()
+    response_headers = {str(key).lower(): str(value) for key, value in error_headers}
+    status = int(exc.code)
+    reason = str(exc.reason or "HTTP error")
+    return status, reason, raw_body, response_headers
+
+
+def _execute_https_request(
     *,
-    hostname: str,
-    request_target: str,
+    host: str,
     method: str,
+    request_target: str,
     headers: Dict[str, str],
     data: Optional[bytes],
-) -> bytes:
-    request_lines = [
-        f"{method} {request_target} HTTP/1.1",
-        f"Host: {hostname}",
-        "Connection: close",
-    ]
-    for key, value in headers.items():
-        request_lines.append(f"{key}: {value}")
-    if data is not None and "Content-Length" not in headers:
-        request_lines.append(f"Content-Length: {len(data)}")
-    request_bytes = ("\r\n".join(request_lines) + "\r\n\r\n").encode("ascii")
-    if data is not None:
-        request_bytes += data
-    return request_bytes
+    timeout: float,
+) -> Tuple[int, str, str, Dict[str, str]]:
+    request = urllib.request.Request(
+        url=f"https://{host}{request_target}",
+        data=data,
+        headers=headers,
+        method=method.upper(),
+    )
+    try:
+        opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=_secure_ssl_context()))
+        with opener.open(request, timeout=timeout) as response:
+            status, reason, raw_body, response_headers = _read_https_success(response)
+    except urllib.error.HTTPError as exc:
+        status, reason, raw_body, response_headers = _read_https_error(exc)
+    return status, reason, raw_body, response_headers
 
 
 def request_https_json(
@@ -117,47 +161,29 @@ def request_https_json(
         allowed_host_suffixes=allowed_host_suffixes,
         strip_query=strip_query,
     )
-    parsed = urlparse(safe_url)
-    hostname = parsed.hostname
-    if not hostname:
-        raise ValueError("Validated URL is missing a hostname.")
-    port = parsed.port or 443
-    request_target = parsed.path or "/"
-    if parsed.query:
-        request_target = f"{request_target}?{parsed.query}"
-
-    ssl_context = ssl.create_default_context()
-    request_headers = dict(headers or {})
-    request_bytes = _build_request_bytes(
-        hostname=hostname,
-        request_target=request_target,
+    parsed = urllib.parse.urlparse(safe_url)
+    host = (parsed.hostname or "").strip().lower()
+    path = parsed.path or "/"
+    query_pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True, strict_parsing=False)
+    query = {str(key): str(value) for key, value in query_pairs}
+    request_target = _build_request_target(path, query)
+    status, reason, raw_body, response_headers = _execute_https_request(
+        host=host,
         method=method,
-        headers=request_headers,
+        request_target=request_target,
+        headers=dict(headers or {}),
         data=data,
+        timeout=timeout,
     )
-
-    with socket.create_connection((hostname, port), timeout=timeout) as tcp_connection:
-        with ssl_context.wrap_socket(tcp_connection, server_hostname=hostname) as tls_connection:
-            tls_connection.sendall(request_bytes)
-            response = http.client.HTTPResponse(cast(Any, _SocketResponseAdapter(tls_connection)))
-            response.begin()
-            response_body = response.read()
-            response_headers = {key.lower(): value for key, value in response.getheaders()}
-            response_message = response.msg
-            status_code = response.status
-            reason = response.reason
-
-    if status_code >= 400:
-        raise urllib_error.HTTPError(
-            safe_url,
-            status_code,
-            reason,
-            response_message,
-            None,
+    if status >= 400:
+        error_headers = Message()
+        for header_name, header_value in response_headers.items():
+            error_headers[header_name] = header_value
+        raise urllib.error.HTTPError(
+            url=f"https://{host}{request_target}",
+            code=status,
+            msg=reason,
+            hdrs=error_headers,
+            fp=None,
         )
-
-    try:
-        body = json.loads(response_body.decode("utf-8"))
-    except UnicodeDecodeError as exc:
-        raise ValueError("Response body is not valid UTF-8 JSON.") from exc
-    return body, response_headers
+    return json.loads(raw_body), response_headers
