@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, annotations, division
 
 # mypy: disable-error-code=assignment
 
@@ -501,12 +501,26 @@ def test_save_raises_when_compression_fails(
     assert "Error saving file: compress boom" in capsys.readouterr().out  # nosec B101
 
 
+def test_rewrite_player_resources_requires_loaded_data() -> None:
+    save = swgb_save.SaveGame("dummy.ga2")
+
+    with pytest.raises(ValueError, match="No save data loaded"):
+        save._rewrite_player_resources(bytearray())
+
+
+def test_compress_and_write_requires_loaded_data(tmp_path: Path) -> None:
+    save = swgb_save.SaveGame("dummy.ga2")
+
+    with pytest.raises(ValueError, match="No save data loaded"):
+        save._compress_and_write(str(tmp_path / "dummy.ga2"), b"original")
+
+
 def test_main_reports_errors_when_read_fails(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     class FakeSaveGame:
         def __init__(self, _filename: str):
-            return None
+            pass
 
         def read(self) -> None:
             raise RuntimeError("boom")

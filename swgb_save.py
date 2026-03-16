@@ -283,6 +283,31 @@ class SaveGame:
         updated_players.add(player.name)
         return True
 
+    def _rewrite_player_resources(self, data: bytearray) -> Set[str]:
+        if self.data is None:
+            raise ValueError(NO_SAVE_DATA_LOADED)
+
+        source = self.data
+        updated_players: Set[str] = set()
+        pos = 0
+
+        while pos < len(source) - 32:
+            pattern_pos = source.find(PLAYER_PATTERN, pos)
+            if pattern_pos == -1:
+                break
+            try:
+                self._update_matching_player(pattern_pos, data, updated_players)
+            except PLAYER_ENTRY_ERRORS as exc:
+                print(f"Warning: Error processing pattern at {pattern_pos}: {exc}")
+            pos = pattern_pos + 1
+
+        return updated_players
+
+    def _report_missing_updates(self, updated_players: Set[str]) -> None:
+        if len(updated_players) != len(self.players):
+            missing = {player.name for player in self.players} - updated_players
+            print(f"Warning: Could not update resources for players: {missing}")
+
     @staticmethod
     def _create_backup_if_missing(filename: str) -> None:
         backup_path = filename + ".backup"
@@ -291,11 +316,11 @@ class SaveGame:
             print(f"Created backup: {backup_path}")
 
     @staticmethod
-    def _compress_save_data(payload: bytes) -> bytes:
+    def _compress_save_data(payload: bytes, *, wbits: int = -15) -> bytes:
         compressor = zlib.compressobj(
             level=9,
             method=zlib.DEFLATED,
-            wbits=-15,
+            wbits=wbits,
             memLevel=9,
             strategy=zlib.Z_DEFAULT_STRATEGY,
         )
@@ -309,50 +334,44 @@ class SaveGame:
             file_handle.write(compressed)
         print(f"Saved changes to: {filename}")
 
+    def _resolve_output_filename(self, filename: Optional[str]) -> str:
+        return self.filename if filename is None else filename
+
+    @staticmethod
+    def _read_original_file(filename: str) -> bytes:
+        with open(filename, "rb") as file_handle:
+            return file_handle.read()
+
+    def _compress_and_write(self, filename: str, original: bytes) -> None:
+        if self.data is None:
+            raise ValueError(NO_SAVE_DATA_LOADED)
+
+        try:
+            compressed = self._compress_save_data(self.data, wbits=self.wbits or -15)
+            print(f"Original size: {len(original):,} bytes")
+            print(f"Compressed size: {len(compressed):,} bytes")
+            self._write_compressed_file(filename, compressed)
+        except (OSError, RuntimeError, zlib.error) as exc:
+            print(f"Error saving file: {exc}")
+            raise
+
     def save(self, filename: Optional[str] = None) -> None:
         """Save changes to file."""
         if self.data is None:
             raise ValueError(NO_SAVE_DATA_LOADED)
 
-        if filename is None:
-            filename = self.filename
-
         data = bytearray(self.data)
-        updated_players: Set[str] = set()
-        pos = 0
-
-        while pos < len(self.data) - 32:
-            pattern_pos = self.data.find(PLAYER_PATTERN, pos)
-            if pattern_pos == -1:
-                break
-            try:
-                self._update_matching_player(pattern_pos, data, updated_players)
-            except PLAYER_ENTRY_ERRORS as exc:
-                print(f"Warning: Error processing pattern at {pattern_pos}: {exc}")
-            pos = pattern_pos + 1
-
-        if len(updated_players) != len(self.players):
-            missing = {player.name for player in self.players} - updated_players
-            print(f"Warning: Could not update resources for players: {missing}")
+        updated_players = self._rewrite_player_resources(data)
+        self._report_missing_updates(updated_players)
 
         self.data = bytes(data)
 
+        filename = self._resolve_output_filename(filename)
         self._create_backup_if_missing(filename)
 
         print("\nAnalyzing original file format...")
-        with open(filename, "rb") as file_handle:
-            original = file_handle.read()
-
-        try:
-            compressed = self._compress_save_data(self.data)
-
-            print(f"Original size: {len(original):,} bytes")
-            print(f"Compressed size: {len(compressed):,} bytes")
-
-            self._write_compressed_file(filename, compressed)
-        except Exception as exc:
-            print(f"Error saving file: {exc}")
-            raise
+        original = self._read_original_file(filename)
+        self._compress_and_write(filename, original)
 
     def print_info(self) -> None:
         """Print save file information."""
@@ -384,7 +403,7 @@ def main() -> None:
         save = SaveGame(sys.argv[1])
         save.read()
         save.print_info()
-    except Exception as exc:
+    except (OSError, RuntimeError, ValueError, zlib.error) as exc:
         print(f"Error: {exc}")
         sys.exit(1)
 

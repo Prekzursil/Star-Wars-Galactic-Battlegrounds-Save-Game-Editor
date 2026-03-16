@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, annotations, division
 
 import importlib
 import runpy
@@ -54,8 +54,9 @@ class FakeWidget:
     def destroy(self):
         self.destroyed = True
 
-    def set(self, *_args, **_kwargs):
-        return None
+    @staticmethod
+    def set(*_args, **_kwargs):
+        pass
 
 
 class FakeRoot(FakeWidget):
@@ -83,16 +84,20 @@ class FakeRoot(FakeWidget):
     def mainloop(self) -> None:
         self.mainloop_called = True
 
-    def winfo_rootx(self) -> int:
+    @staticmethod
+    def winfo_rootx() -> int:
         return 50
 
-    def winfo_rooty(self) -> int:
+    @staticmethod
+    def winfo_rooty() -> int:
         return 60
 
-    def winfo_width(self) -> int:
+    @staticmethod
+    def winfo_width() -> int:
         return 400
 
-    def winfo_height(self) -> int:
+    @staticmethod
+    def winfo_height() -> int:
         return 300
 
 
@@ -102,14 +107,17 @@ class FakeTreeview(FakeWidget):
         self.rows = {}
         self.order = []
 
-    def heading(self, *_args, **_kwargs):
-        return None
+    @staticmethod
+    def heading(*_args, **_kwargs):
+        pass
 
-    def column(self, *_args, **_kwargs):
-        return None
+    @staticmethod
+    def column(*_args, **_kwargs):
+        pass
 
-    def yview(self, *_args, **_kwargs):
-        return None
+    @staticmethod
+    def yview(*_args, **_kwargs):
+        pass
 
     def insert(self, _parent, _index, values):
         item_id = f"item-{len(self.order)}"
@@ -236,7 +244,8 @@ def test_edit_resource_dialog_handles_unexpected_errors(monkeypatch: pytest.Monk
     dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One", [1.0, 2.0, 3.0, 4.0])
 
     class BrokenVar:
-        def get(self):
+        @staticmethod
+        def get():
             raise RuntimeError("boom")
 
     dialog.entries["Carbon"] = BrokenVar()
@@ -273,8 +282,9 @@ def test_save_game_gui_loads_browse_edit_and_save_flows(
             self.filename = filename
             self.players = [FakePlayer("Alpha", 1, [10.0, 20.0, 30.0, 40.0])]
 
-        def read(self):
-            return None
+        @staticmethod
+        def read():
+            pass
 
         def save(self, _filename):
             self.saved = True
@@ -327,7 +337,8 @@ def test_save_game_gui_handles_missing_selection_and_save_errors(
     assert message_calls["warning"]  # nosec B101
 
     class FailingSave:
-        def save(self, _filename):
+        @staticmethod
+        def save(_filename):
             raise RuntimeError("boom")
 
     app.current_save = FailingSave()
@@ -353,7 +364,7 @@ def test_load_save_surfaces_read_errors(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
     class BrokenSaveGame:
         def __init__(self, _filename: str):
-            self.players: List[object] = []
+            self.players: list[object] = []
 
         def read(self):
             raise RuntimeError("parse boom")

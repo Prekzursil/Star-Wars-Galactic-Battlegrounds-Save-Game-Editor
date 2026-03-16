@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, annotations, division
 
 import ipaddress
 import json
@@ -93,6 +93,11 @@ def _build_request_target(path: str, query: Dict[str, str]) -> str:
     return path + (f"?{query_text}" if query_text else "")
 
 
+def _build_json_decode_error(exc: UnicodeDecodeError) -> ValueError:
+    _ = exc
+    return ValueError("Response body is not valid UTF-8 JSON.")
+
+
 def _secure_ssl_context() -> ssl.SSLContext:
     context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
     context.check_hostname = True
@@ -118,6 +123,31 @@ def _read_https_error(exc: urllib.error.HTTPError) -> Tuple[int, str, str, Dict[
     return status, reason, raw_body, response_headers
 
 
+def _build_https_request(
+    *,
+    host: str,
+    method: str,
+    request_target: str,
+    headers: Dict[str, str],
+    data: Optional[bytes],
+) -> urllib.request.Request:
+    return urllib.request.Request(
+        url=f"https://{host}{request_target}",
+        data=data,
+        headers=headers,
+        method=method.upper(),
+    )
+
+
+def _open_https_request(
+    request: urllib.request.Request,
+    timeout: float,
+) -> Tuple[int, str, str, Dict[str, str]]:
+    opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=_secure_ssl_context()))
+    with opener.open(request, timeout=timeout) as response:
+        return _read_https_success(response)
+
+
 def _execute_https_request(
     *,
     host: str,
@@ -127,19 +157,17 @@ def _execute_https_request(
     data: Optional[bytes],
     timeout: float,
 ) -> Tuple[int, str, str, Dict[str, str]]:
-    request = urllib.request.Request(
-        url=f"https://{host}{request_target}",
-        data=data,
+    request = _build_https_request(
+        host=host,
+        method=method,
+        request_target=request_target,
         headers=headers,
-        method=method.upper(),
+        data=data,
     )
     try:
-        opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=_secure_ssl_context()))
-        with opener.open(request, timeout=timeout) as response:
-            status, reason, raw_body, response_headers = _read_https_success(response)
+        return _open_https_request(request, timeout)
     except urllib.error.HTTPError as exc:
-        status, reason, raw_body, response_headers = _read_https_error(exc)
-    return status, reason, raw_body, response_headers
+        return _read_https_error(exc)
 
 
 def request_https_json(
@@ -175,7 +203,7 @@ def request_https_json(
         data=data,
         timeout=timeout,
     )
-    if status >= 400:
+    if not 200 <= status < 300:
         error_headers = Message()
         for header_name, header_value in response_headers.items():
             error_headers[header_name] = header_value
@@ -186,4 +214,8 @@ def request_https_json(
             hdrs=error_headers,
             fp=None,
         )
-    return json.loads(raw_body), response_headers
+
+    try:
+        return json.loads(raw_body), response_headers
+    except UnicodeDecodeError as exc:
+        raise _build_json_decode_error(exc) from exc
