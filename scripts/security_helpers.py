@@ -1,3 +1,5 @@
+"""Shared HTTPS request hardening helpers for quality scripts."""
+
 from __future__ import absolute_import, division
 
 import ipaddress
@@ -10,7 +12,13 @@ from email.message import Message
 from typing import Dict, Mapping, Optional, Set, Tuple
 from urllib.parse import urlparse, urlunparse
 
-_LOCAL_IP_FLAGS = ("is_private", "is_loopback", "is_link_local", "is_reserved", "is_multicast")
+_LOCAL_IP_FLAGS = (
+    "is_private",
+    "is_loopback",
+    "is_link_local",
+    "is_reserved",
+    "is_multicast",
+)
 
 
 def _parse_https_url(raw_url: str):
@@ -31,7 +39,9 @@ def _normalized_hosts(values: Optional[Set[str]]) -> Set[str]:
 
 
 def _hostname_matches_suffix(hostname: str, suffixes: Set[str]) -> bool:
-    return any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes)
+    return any(
+        hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes
+    )
 
 
 def _validate_hostname_allowlists(
@@ -108,14 +118,20 @@ def _secure_ssl_context() -> ssl.SSLContext:
 
 def _read_https_success(response) -> Tuple[int, str, str, Dict[str, str]]:
     raw_body = response.read().decode("utf-8")
-    response_headers = {str(key).lower(): str(value) for key, value in response.headers.items()}
+    response_headers = {
+        str(key).lower(): str(value) for key, value in response.headers.items()
+    }
     status = int(getattr(response, "status", response.getcode()))
     reason = str(getattr(response, "reason", "") or "HTTP error")
     return status, reason, raw_body, response_headers
 
 
-def _read_https_error(exc: urllib.error.HTTPError) -> Tuple[int, str, str, Dict[str, str]]:
-    raw_body = exc.read().decode("utf-8", errors="replace") if exc.fp is not None else ""
+def _read_https_error(
+    exc: urllib.error.HTTPError,
+) -> Tuple[int, str, str, Dict[str, str]]:
+    raw_body = (
+        exc.read().decode("utf-8", errors="replace") if exc.fp is not None else ""
+    )
     error_headers = tuple(exc.headers.items()) if exc.headers else ()
     response_headers = {str(key).lower(): str(value) for key, value in error_headers}
     status = int(exc.code)
@@ -143,12 +159,14 @@ def _open_https_request(
     request: urllib.request.Request,
     timeout: float,
 ) -> Tuple[int, str, str, Dict[str, str]]:
-    opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=_secure_ssl_context()))
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPSHandler(context=_secure_ssl_context())
+    )
     with opener.open(request, timeout=timeout) as response:
         return _read_https_success(response)
 
 
-def _execute_https_request(
+def _execute_https_request(  # pylint: disable=too-many-arguments
     *,
     host: str,
     method: str,
@@ -170,7 +188,7 @@ def _execute_https_request(
         return _read_https_error(exc)
 
 
-def request_https_json(
+def request_https_json(  # pylint: disable=too-many-arguments,too-many-locals
     raw_url: str,
     *,
     headers: Optional[Mapping[str, str]] = None,
@@ -192,7 +210,9 @@ def request_https_json(
     parsed = urllib.parse.urlparse(safe_url)
     host = (parsed.hostname or "").strip().lower()
     path = parsed.path or "/"
-    query_pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True, strict_parsing=False)
+    query_pairs = urllib.parse.parse_qsl(
+        parsed.query, keep_blank_values=True, strict_parsing=False
+    )
     query = {str(key): str(value) for key, value in query_pairs}
     request_target = _build_request_target(path, query)
     status, reason, raw_body, response_headers = _execute_https_request(
