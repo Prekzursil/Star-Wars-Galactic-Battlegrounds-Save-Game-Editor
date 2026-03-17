@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-codecov-analytics.yml@d3aabc77c858e27cb7ade824e9fbf3dd9203f256
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-codecov-analytics.yml@e6d4ce5145e76f65491dfa651d492f5ff3961f41
     with:
       repo_slug: ${{ github.repository }}
       event_name: ${{ github.event_name }}
