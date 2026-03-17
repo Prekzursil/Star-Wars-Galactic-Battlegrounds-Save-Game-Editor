@@ -26,7 +26,7 @@ class FakeStringVar:
 
 
 class FakeWidget:
-    def __init__(self, *_args, **kwargs):
+    def __init__(self, *_args: object, **kwargs: object) -> None:
         self.state = kwargs.get("state")
         self.textvariable = kwargs.get("textvariable")
         self.command = kwargs.get("command")
@@ -61,7 +61,7 @@ class FakeWidget:
 
 
 class FakeRoot(FakeWidget):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         self._window_state: Dict[str, object] = {}
         self.mainloop_called = False
