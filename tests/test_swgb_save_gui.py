@@ -1,3 +1,7 @@
+"""GUI-focused tests for the SWGB save editor tkinter wrapper."""
+
+# pylint: disable=missing-class-docstring,missing-function-docstring
+
 from __future__ import absolute_import, division
 
 import importlib
@@ -386,7 +390,10 @@ def test_load_save_surfaces_read_errors(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
     app.load_save()
 
-    assert message_calls["error"][-1] == ("Error", "Failed to load save file: parse boom")  # nosec B101
+    assert message_calls["error"][-1] == (
+        "Error",
+        "Failed to load save file: parse boom",
+    )  # nosec B101
     assert app.status_var.get() == "Error loading file"  # nosec B101
 
 
