@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division
 
 # mypy: disable-error-code=assignment
+# pylint: disable=protected-access
 
 import runpy
 import struct
@@ -48,7 +49,10 @@ def test_hex_dump_formats_offsets_and_ascii() -> None:
     assert "|AB..|" in rendered  # nosec B101
 
 
-def test_read_raises_when_decompression_never_succeeds(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_read_raises_when_decompression_never_succeeds(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     path = tmp_path / "broken.ga2"
     path.write_bytes(b"not-a-save")
 
@@ -87,7 +91,9 @@ def test_read_parses_player_resources_and_tracks_successful_wbits(
 
     assert calls == [zlib.MAX_WBITS, 15, -15]  # nosec B101
     assert save.wbits == -15  # nosec B101
-    assert [(player.name, player.index, player.resources) for player in save.players] == [  # nosec B101
+    assert [
+        (player.name, player.index, player.resources) for player in save.players
+    ] == [  # nosec B101
         ("Player One", 1, [20.0, 10.0, 30.0, 40.0])
     ]
 
@@ -134,7 +140,10 @@ def test_print_info_requires_loaded_data() -> None:
         save.print_info()
 
 
-def test_main_shows_usage_without_path(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_shows_usage_without_path(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     monkeypatch.setattr(sys, "argv", ["swgb_save.py"])
 
     with pytest.raises(SystemExit) as exc:
@@ -215,7 +224,15 @@ def test_find_player_entries_handles_marker_and_direct_name_fallbacks(
 
 def test_find_player_entries_handles_direct_name_decode_errors() -> None:
     pattern = bytes.fromhex("16db00000021")
-    payload = b"\x00" * 12 + (b"\xe9" * 4) + b"\x00" + b"\x00" * 8 + pattern + struct.pack("<ffff", 1.0, 2.0, 3.0, 4.0) + b"\x00" * 32
+    payload = (
+        b"\x00" * 12
+        + (b"\xe9" * 4)
+        + b"\x00"
+        + b"\x00" * 8
+        + pattern
+        + struct.pack("<ffff", 1.0, 2.0, 3.0, 4.0)
+        + b"\x00" * 32
+    )
     save = swgb_save.SaveGame("dummy.ga2")
     save.data = payload
 
@@ -285,7 +302,7 @@ def test_find_player_entries_handles_unpack_errors(
 
 
 def test_find_player_entries_logs_processing_errors(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     payload = _player_blob("Player One", (10.0, 20.0, 30.0, 40.0))
     save = swgb_save.SaveGame("dummy.ga2")
@@ -305,7 +322,7 @@ def test_find_player_entries_logs_processing_errors(
 def test_find_player_entries_returns_empty_without_loaded_data() -> None:
     save = swgb_save.SaveGame("dummy.ga2")
 
-    assert save._find_player_entries() == []  # nosec B101
+    assert not save._find_player_entries()  # nosec B101
 
 
 def test_save_updates_via_direct_name_match_and_warns_for_missing_players(
@@ -334,7 +351,10 @@ def test_save_updates_via_direct_name_match_and_warns_for_missing_players(
     restored = zlib.decompress(path.read_bytes(), -15)
     pattern_pos = restored.find(bytes.fromhex("16db00000021"))
     resource_start = pattern_pos + 6
-    assert struct.unpack("<ffff", restored[resource_start : resource_start + 16]) == pytest.approx(  # nosec B101
+    assert struct.unpack(
+        "<ffff",
+        restored[resource_start : resource_start + 16],
+    ) == pytest.approx(  # nosec B101
         (11.0, 22.0, 33.0, 44.0)
     )
     output = capsys.readouterr().out
@@ -360,7 +380,11 @@ def test_save_continues_after_name_processing_errors(
     save.data = payload
     save.players = [swgb_save.Player("Player One", 1, [11.0, 22.0, 33.0, 44.0])]
 
-    monkeypatch.setattr(swgb_save.struct, "pack", lambda *_args, **_kwargs: _raise_runtime_error("pack boom"))
+    monkeypatch.setattr(
+        swgb_save.struct,
+        "pack",
+        lambda *_args, **_kwargs: _raise_runtime_error("pack boom"),
+    )
 
     save.save()
 
@@ -372,7 +396,9 @@ def test_update_matching_player_requires_loaded_data() -> None:
     save = swgb_save.SaveGame("dummy.ga2")
     save.players = [swgb_save.Player("Han Solo", 1, [11.0, 22.0, 33.0, 44.0])]
 
-    save._find_name_before_pattern = lambda *args, **kwargs: "Han Solo"  # type: ignore[method-assign]
+    save._find_name_before_pattern = (  # type: ignore[method-assign]
+        lambda *args, **kwargs: "Han Solo"
+    )
 
     with pytest.raises(ValueError, match="No save data loaded"):
         save._update_matching_player(0, bytearray(), set())
@@ -427,7 +453,10 @@ def test_save_handles_invalid_direct_name_characters(
 
     save.save()
 
-    assert "Warning: Could not update resources for players: {'Han'}" in capsys.readouterr().out  # nosec B101
+    assert (
+        "Warning: Could not update resources for players: {'Han'}"
+        in capsys.readouterr().out
+    )  # nosec B101
 
 
 def test_save_skips_direct_name_candidates_with_invalid_characters(
