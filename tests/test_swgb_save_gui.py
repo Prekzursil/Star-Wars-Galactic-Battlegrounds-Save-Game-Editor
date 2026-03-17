@@ -22,22 +22,18 @@ class FakeStringVar:
 
 
 class FakeWidget:
-    def __init__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
+    def __init__(self, *_args, **kwargs):
         self.state = kwargs.get("state")
         self.textvariable = kwargs.get("textvariable")
         self.command = kwargs.get("command")
         self.destroyed = False
-        self.items = {}
-        self.children = []
-        self.selected = ()
+        self._layout_calls: Dict[str, Tuple[Tuple[object, ...], Dict[str, object]]] = {}
 
     def grid(self, *args, **kwargs):
-        self.grid_args = (args, kwargs)
+        self._layout_calls["grid"] = (args, kwargs)
 
     def pack(self, *args, **kwargs):
-        self.pack_args = (args, kwargs)
+        self._layout_calls["pack"] = (args, kwargs)
 
     def configure(self, **kwargs):
         for key, value in kwargs.items():
@@ -46,10 +42,10 @@ class FakeWidget:
     config = configure
 
     def columnconfigure(self, *args, **kwargs):
-        self.columnconfigure_args = (args, kwargs)
+        self._layout_calls["columnconfigure"] = (args, kwargs)
 
     def rowconfigure(self, *args, **kwargs):
-        self.rowconfigure_args = (args, kwargs)
+        self._layout_calls["rowconfigure"] = (args, kwargs)
 
     def destroy(self):
         self.destroyed = True
@@ -61,26 +57,31 @@ class FakeWidget:
 
 
 class FakeRoot(FakeWidget):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._window_state: Dict[str, object] = {}
+        self.mainloop_called = False
+
     def title(self, value: str) -> None:
-        self.title_value = value
+        self._window_state["title"] = value
 
     def geometry(self, value: str) -> None:
-        self.geometry_value = value
+        self._window_state["geometry"] = value
 
     def transient(self, _parent) -> None:
-        self.transient_parent = _parent
+        self._window_state["transient_parent"] = _parent
 
     def grab_set(self) -> None:
-        self.grabbed = True
+        self._window_state["grabbed"] = True
 
     def update(self) -> None:
-        self.updated = True
+        self._window_state["updated"] = True
 
     def wait_window(self, _window) -> None:
-        self.waited = True
+        self._window_state["waited"] = True
 
     def resizable(self, width: bool, height: bool) -> None:
-        self.resizable_args = (width, height)
+        self._window_state["resizable_args"] = (width, height)
 
     def mainloop(self) -> None:
         self.mainloop_called = True
@@ -107,6 +108,7 @@ class FakeTreeview(FakeWidget):
         super().__init__(*args, **kwargs)
         self.rows = {}
         self.order = []
+        self.selected = ()
 
     @staticmethod
     def heading(*_args, **_kwargs):
@@ -226,7 +228,7 @@ def test_edit_resource_dialog_accepts_valid_values(monkeypatch: pytest.MonkeyPat
 
     assert dialog.result == [10.0, 20.0, 30.0, 40.0]  # nosec B101
     assert dialog.dialog.destroyed is True  # nosec B101
-    assert message_calls["error"] == []  # nosec B101
+    assert not message_calls["error"]  # nosec B101
 
 
 def test_edit_resource_dialog_rejects_invalid_values(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -247,7 +249,7 @@ def test_edit_resource_dialog_handles_unexpected_errors(monkeypatch: pytest.Monk
 
     dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One", [1.0, 2.0, 3.0, 4.0])
 
-    class BrokenVar:
+    class BrokenVar:  # pylint: disable=too-few-public-methods
         @staticmethod
         def get():
             raise RuntimeError("boom")
@@ -275,7 +277,7 @@ def test_save_game_gui_loads_browse_edit_and_save_flows(
 ) -> None:
     gui, dialog_state, message_calls = install_fake_tk(monkeypatch)
 
-    class FakePlayer:
+    class FakePlayer:  # pylint: disable=too-few-public-methods
         def __init__(self, name, index, resources):
             self.name = name
             self.index = index
@@ -285,6 +287,7 @@ def test_save_game_gui_loads_browse_edit_and_save_flows(
         def __init__(self, filename: str):
             self.filename = filename
             self.players = [FakePlayer("Alpha", 1, [10.0, 20.0, 30.0, 40.0])]
+            self.saved = False
 
         @staticmethod
         def read():
@@ -316,7 +319,7 @@ def test_save_game_gui_loads_browse_edit_and_save_flows(
 
     app.tree.selection_set(tree_items[0])
 
-    class FakeDialog:
+    class FakeDialog:  # pylint: disable=too-few-public-methods
         def __init__(self, *_args, **_kwargs):
             self.dialog = object()
             self.result = [100.0, 200.0, 300.0, 400.0]
@@ -341,7 +344,7 @@ def test_save_game_gui_handles_missing_selection_and_save_errors(
     app.edit_resources()
     assert message_calls["warning"]  # nosec B101
 
-    class FailingSave:
+    class FailingSave:  # pylint: disable=too-few-public-methods
         @staticmethod
         def save(_filename):
             raise RuntimeError("boom")
@@ -367,7 +370,7 @@ def test_load_save_requires_a_path(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_load_save_surfaces_read_errors(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     gui, dialog_state, message_calls = install_fake_tk(monkeypatch)
 
-    class BrokenSaveGame:
+    class BrokenSaveGame:  # pylint: disable=too-few-public-methods
         def __init__(self, _filename: str):
             self.players: List[object] = []
 
@@ -402,7 +405,7 @@ def test_main_builds_gui_and_enters_mainloop(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(gui.tk, "Tk", lambda: root)
     captured = {}
 
-    class FakeApp:
+    class FakeApp:  # pylint: disable=too-few-public-methods
         def __init__(self, passed_root):
             captured["root"] = passed_root
 
