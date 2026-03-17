@@ -1,7 +1,5 @@
 name: Quality Zero Gate
 
-permissions:
-  contents: read
 
 on:
   push:

@@ -3,3 +3,7 @@ __pycache__/
 *.pyo
 .coverage
 coverage/
+build/
+dist/
+.tmp-codacy-repro/
+.tmp-sonar/
