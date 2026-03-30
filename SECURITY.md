@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-The `main` branch is the supported line for security fixes.
+Security fixes are applied to the `main` branch.
 
 | Version | Supported |
 | --- | --- |
@@ -11,24 +11,23 @@ The `main` branch is the supported line for security fixes.
 
 ## Reporting a Vulnerability
 
+Please do **not** open public GitHub issues for undisclosed security findings.
+
 Use GitHub Private Vulnerability Reporting for this repository:
 <https://github.com/Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor/security/advisories/new>
 
-Do not open public GitHub issues for undisclosed security vulnerabilities.
+If private advisory reporting is unavailable, contact the maintainer privately on GitHub (`@Prekzursil`).
 
 When reporting, include:
 
-- A clear description of the issue and affected components.
-- Reproduction steps or proof-of-concept details.
-- Impact assessment, including confidentiality, integrity, and availability impact.
-- Any suggested remediation if available.
+- the affected component, file, workflow, or dependency
+- the exact commit, branch, or release if known
+- clear reproduction or proof-of-concept steps
+- impact details covering confidentiality, integrity, or availability
+- any suggested mitigation if known
 
-## Response Targets
+## Disclosure Expectations
 
-- Initial acknowledgment: within 3 business days.
-- Triage/update after acknowledgment: within 7 business days.
-- Ongoing status updates: at least every 7 business days until resolution.
-
-## Coordinated Disclosure
-
-Please allow time for investigation, patch preparation, and coordinated release before public disclosure.
+- Initial acknowledgment: best effort within 3 business days.
+- Triage update: best effort within 7 business days.
+- Coordinated disclosure is expected; please allow time to investigate and patch before public disclosure.
