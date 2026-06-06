@@ -80,7 +80,8 @@ class SaveGame:
         if not self.players:
             print("Could not find any player entries")
 
-    def _hex_dump(self, data: bytes, offset: int = 0, length: int = 64) -> str:
+    @staticmethod
+    def _hex_dump(data: bytes, offset: int = 0, length: int = 64) -> str:
         """Create a hex dump of bytes with ASCII representation."""
         result = []
         for index in range(0, min(len(data), length), 16):
