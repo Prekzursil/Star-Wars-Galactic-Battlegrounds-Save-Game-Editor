@@ -27,7 +27,7 @@ Resolve code style, compatibility, or linter warnings by updating code to follow
 ## Typical Commit Signals
 
 - Identify style or compatibility warnings from linter/static analysis.
-- Update code to resolve the warnings (e.g., add __future__ imports, refactor methods).
+- Update code to resolve the warnings (e.g., add **future** imports, refactor methods).
 - Ensure behavior is preserved and all tests pass.
 
 ## Notes

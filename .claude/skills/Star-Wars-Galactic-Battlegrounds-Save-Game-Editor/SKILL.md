@@ -4,34 +4,40 @@
 > Auto-generated skill from repository analysis
 
 ## Overview
+
 This skill outlines the development practices and workflows used in the **Star-Wars-Galactic-Battlegrounds-Save-Game-Editor** Python project. The repository focuses on editing save game files for the classic Star Wars: Galactic Battlegrounds game. It emphasizes maintainable code, clear commit conventions, and robust testing, even without a formal framework.
 
 ## Coding Conventions
 
 - **File Naming:**  
   Use `snake_case` for all Python files and modules.
-  ```
-  # Good
-  swgb_save.py
-  test_swgb_save.py
+```
 
-  # Bad
-  SWGBSave.py
-  swgbSave.py
-  ```
+# Good
 
-- **Import Style:**  
-  Prefer **relative imports** within the package.
-  ```python
-  # Good
-  from .swgb_save import SaveGameEditor
+swgb_save.py
+test_swgb_save.py
 
-  # Bad
-  import swgb_save
-  ```
+# Bad
+
+SWGBSave.py
+swgbSave.py
+
+````
+
+- **Import Style:**
+Prefer **relative imports** within the package.
+```python
+# Good
+from .swgb_save import SaveGameEditor
+
+# Bad
+import swgb_save
+````
 
 - **Export Style:**  
   Use **named exports** (explicitly define what is exported).
+
   ```python
   # In swgb_save.py
   __all__ = ['SaveGameEditor', 'parse_save_file']
@@ -47,6 +53,7 @@ This skill outlines the development practices and workflows used in the **Star-W
 ## Workflows
 
 ### Improve Test Coverage
+
 **Trigger:** When you want to achieve 100% test coverage or cover missing code branches.  
 **Command:** `/add-coverage-tests`
 
@@ -56,6 +63,7 @@ This skill outlines the development practices and workflows used in the **Star-W
 4. Run the tests and verify that coverage reaches 100%.
 
 **Example:**
+
 ```bash
 coverage run -m unittest discover
 coverage report
@@ -63,6 +71,7 @@ coverage report
 ```
 
 ### Address Code Style and Lint Findings
+
 **Trigger:** When you want to resolve linter or static analysis warnings (e.g., from Pylint or Codacy).  
 **Command:** `/fix-lint-warnings`
 
@@ -74,6 +83,7 @@ coverage report
 3. Ensure all tests pass after making changes.
 
 **Example:**
+
 ```python
 # Add at the top of Python 2/3 compatible files
 from __future__ import print_function
@@ -92,6 +102,7 @@ from __future__ import print_function
   Each test targets a specific module or GUI component.
 
 **Example:**
+
 ```python
 # tests/test_swgb_save.py
 import unittest
@@ -105,8 +116,11 @@ class TestSaveGameEditor(unittest.TestCase):
 
 ## Commands
 
-| Command                | Purpose                                                    |
-|------------------------|------------------------------------------------------------|
-| /add-coverage-tests    | Add tests to increase code coverage and cover missing branches |
-| /fix-lint-warnings     | Resolve linter or static analysis warnings                  |
+| Command             | Purpose                                                        |
+| ------------------- | -------------------------------------------------------------- |
+| /add-coverage-tests | Add tests to increase code coverage and cover missing branches |
+| /fix-lint-warnings  | Resolve linter or static analysis warnings                     |
+
+```
+
 ```
