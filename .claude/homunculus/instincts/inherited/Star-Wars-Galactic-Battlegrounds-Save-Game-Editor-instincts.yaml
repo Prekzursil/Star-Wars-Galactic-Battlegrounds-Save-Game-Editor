@@ -1,0 +1,431 @@
+# Instincts generated from https://github.com/Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+# Generated: 2026-06-06T00:49:25.893Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: Star-Wars-Galactic-Battlegrounds-Save-Game-Editor-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: test, style
+
+## Evidence
+
+- 2 commits analyzed
+- Detected conventional commit pattern
+- Examples: test: cover remaining partial branches for 100% branch coverage, style: clear Codacy Python compatibility and best-practice findings
+
+---
+id: Star-Wars-Galactic-Battlegrounds-Save-Game-Editor-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Commit Length
+
+## Action
+
+Write moderate-length commit messages (~65 characters)
+
+## Evidence
+
+- Average commit message length: 65 chars
+- Based on 2 commits
+
+---
+id: Star-Wars-Galactic-Battlegrounds-Save-Game-Editor-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Naming Files
+
+## Action
+
+Use snake_case naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: snake_case
+
+---
+id: Star-Wars-Galactic-Battlegrounds-Save-Game-Editor-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: Star-Wars-Galactic-Battlegrounds-Save-Game-Editor-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: Star-Wars-Galactic-Battlegrounds-Save-Game-Editor-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: Star-Wars-Galactic-Battlegrounds-Save-Game-Editor-workflow-improve-test-coverage
+trigger: "when doing improve test coverage"
+confidence: 0.55
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Workflow Improve Test Coverage
+
+## Action
+
+Follow the improve-test-coverage workflow:
+1. Identify uncovered code branches using coverage tools.
+2. Write new tests targeting those specific branches.
+3. Add or update test files accordingly.
+4. Verify that coverage reaches 100%.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~1x per month
+- Files: tests/test_swgb_save.py, tests/test_swgb_save_gui.py
+
+---
+id: Star-Wars-Galactic-Battlegrounds-Save-Game-Editor-workflow-address-code-style-and-lint-findings
+trigger: "when doing address code style and lint findings"
+confidence: 0.55
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Workflow Address Code Style And Lint Findings
+
+## Action
+
+Follow the address-code-style-and-lint-findings workflow:
+1. Identify style or compatibility warnings from linter/static analysis.
+2. Update code to resolve the warnings (e.g., add __future__ imports, refactor methods).
+3. Ensure behavior is preserved and all tests pass.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~1x per month
+- Files: swgb_save.py, swgb_save_gui.py
+
+---
+id: star-wars-galactic-battlegrounds-save-game-editor-instinct-file-naming
+trigger: "When creating or renaming a file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Instinct File Naming
+
+## Action
+
+Use snake_case for file names
+
+## Evidence
+
+- Pattern in namingConventions.files
+- Observed in files like tests/test_swgb_save.py
+
+---
+id: star-wars-galactic-battlegrounds-save-game-editor-instinct-function-naming
+trigger: "When writing or refactoring a function"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Instinct Function Naming
+
+## Action
+
+Use camelCase for function names
+
+## Evidence
+
+- Pattern in namingConventions.functions
+
+---
+id: star-wars-galactic-battlegrounds-save-game-editor-instinct-class-naming
+trigger: "When writing or refactoring a class"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Instinct Class Naming
+
+## Action
+
+Use PascalCase for class names
+
+## Evidence
+
+- Pattern in namingConventions.classes
+
+---
+id: star-wars-galactic-battlegrounds-save-game-editor-instinct-constant-naming
+trigger: "When defining a constant"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Instinct Constant Naming
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for constant names
+
+## Evidence
+
+- Pattern in namingConventions.constants
+
+---
+id: star-wars-galactic-battlegrounds-save-game-editor-instinct-import-style
+trigger: "When importing modules within the package"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Instinct Import Style
+
+## Action
+
+Use relative imports
+
+## Evidence
+
+- Pattern in importStyle
+- Seen in swgb_save.py
+
+---
+id: star-wars-galactic-battlegrounds-save-game-editor-instinct-export-style
+trigger: "When exporting functions or classes"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in exportStyle
+
+---
+id: star-wars-galactic-battlegrounds-save-game-editor-instinct-test-location
+trigger: "When adding or updating tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Instinct Test Location
+
+## Action
+
+Place test files in the separate tests/ folder
+
+## Evidence
+
+- tests/test_swgb_save.py
+- tests/test_swgb_save_gui.py
+
+---
+id: star-wars-galactic-battlegrounds-save-game-editor-instinct-test-coverage
+trigger: "When aiming to increase test coverage"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Instinct Test Coverage
+
+## Action
+
+Identify uncovered code branches using coverage tools and write targeted tests
+
+## Evidence
+
+- Commit: test: cover remaining partial branches for 100% branch coverage
+- Workflow: improve-test-coverage
+
+---
+id: star-wars-galactic-battlegrounds-save-game-editor-instinct-test-update
+trigger: "When updating code that affects logic"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Instinct Test Update
+
+## Action
+
+Add or update corresponding tests to maintain coverage
+
+## Evidence
+
+- Pattern in improve-test-coverage workflow
+- tests/test_swgb_save.py
+
+---
+id: star-wars-galactic-battlegrounds-save-game-editor-instinct-git-commit-format
+trigger: "When writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Instinct Git Commit Format
+
+## Action
+
+Use a conventional commit prefix (e.g., test:, style:) followed by a concise summary
+
+## Evidence
+
+- Commits: test: cover remaining partial branches for 100% branch coverage
+- style: clear Codacy Python compatibility and best-practice findings
+
+---
+id: star-wars-galactic-battlegrounds-save-game-editor-instinct-git-commit-length
+trigger: "When writing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Instinct Git Commit Length
+
+## Action
+
+Keep the commit message around 65 characters on average
+
+## Evidence
+
+- Pattern in commits.averageLength
+
+---
+id: star-wars-galactic-battlegrounds-save-game-editor-instinct-workflow-improve-test-coverage
+trigger: "When someone wants to achieve 100% test coverage or cover missing branches"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Instinct Workflow Improve Test Coverage
+
+## Action
+
+Run the /add-coverage-tests command to initiate the test coverage workflow
+
+## Evidence
+
+- Workflow: improve-test-coverage
+- Commit: test: cover remaining partial branches for 100% branch coverage
+
+---
+id: star-wars-galactic-battlegrounds-save-game-editor-instinct-workflow-address-lint-findings
+trigger: "When someone wants to clear linter or static analysis warnings"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: Prekzursil/Star-Wars-Galactic-Battlegrounds-Save-Game-Editor
+---
+
+# Star Wars Galactic Battlegrounds Save Game Editor Instinct Workflow Address Lint Findings
+
+## Action
+
+Run the /fix-lint-warnings command to initiate the code style and lint fix workflow
+
+## Evidence
+
+- Workflow: address-code-style-and-lint-findings
+- Commit: style: clear Codacy Python compatibility and best-practice findings
+
