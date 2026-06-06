@@ -583,3 +583,78 @@ def test_running_swgb_save_as_main_executes_entrypoint(
     output = capsys.readouterr().out
     assert "Save File:" in output  # nosec B101
     assert "Player One" in output  # nosec B101
+
+
+def test_name_from_direct_scan_consumes_full_name_window() -> None:
+    """A maximal-length name keeps the direct scan looping until the byte cap."""
+    save = swgb_save.SaveGame("dummy.ga2")
+    save.data = b"A" * 40
+
+    # The scan must stop at offset + MAX_NAME_BYTES via the loop condition,
+    # exercising the ``name_end < upper_bound`` exit (no break taken).
+    assert save._name_from_direct_scan(0, 40) == "A" * 32  # nosec B101
+
+
+def test_find_player_entries_loop_exits_on_buffer_boundary() -> None:
+    """The scan loop terminates via its window guard, not a missing pattern."""
+    payload = (
+        swgb_save.PLAYER_PATTERN
+        + struct.pack("<ffff", 10.0, 20.0, 30.0, 40.0)
+        + b"\x00" * 11
+    )
+    # ``len - 32`` is 1, so after matching at offset 0 the next ``pos`` (1)
+    # fails ``pos < len(self.data) - 32`` and the while loop exits by condition.
+    assert len(payload) == 33  # nosec B101
+
+    save = swgb_save.SaveGame("dummy.ga2")
+    save.data = payload
+
+    save._find_player_entries()
+
+    assert [(player.name, player.resources) for player in save.players] == [  # nosec B101
+        ("Player 1", [20.0, 10.0, 30.0, 40.0])
+    ]
+
+
+def test_match_player_skips_already_updated_and_unknown_names() -> None:
+    """The matcher walks every player when none qualifies for an update."""
+    save = swgb_save.SaveGame("dummy.ga2")
+    save.players = [
+        swgb_save.Player("Alice", 1, [1.0, 2.0, 3.0, 4.0]),
+        swgb_save.Player("Bob", 2, [1.0, 2.0, 3.0, 4.0]),
+    ]
+
+    # "Bob" matches by name but is already updated, so the loop continues past
+    # it; "Zed" matches nobody. Both paths take the for-loop continuation edge.
+    assert save._match_player("Bob", {"Bob"}) is None  # nosec B101
+    assert save._match_player("Zed", set()) is None  # nosec B101
+
+
+def test_rewrite_player_resources_loop_exits_on_buffer_boundary() -> None:
+    """Rewriting also terminates through the window guard, not a sentinel."""
+    payload = (
+        swgb_save.PLAYER_PATTERN
+        + struct.pack("<ffff", 10.0, 20.0, 30.0, 40.0)
+        + b"\x00" * 11
+    )
+    assert len(payload) == 33  # nosec B101
+
+    save = swgb_save.SaveGame("dummy.ga2")
+    save.data = payload
+    save.players = [swgb_save.Player("Player 1", 1, [1.0, 2.0, 3.0, 4.0])]
+
+    assert save._rewrite_player_resources(bytearray(payload)) == set()  # nosec B101
+
+
+def test_create_backup_if_missing_preserves_existing_backup(tmp_path: Path) -> None:
+    """An existing backup is left untouched instead of being overwritten."""
+    save_file = tmp_path / "save.ga2"
+    save_file.write_bytes(b"new-data")
+    backup_file = tmp_path / "save.ga2.backup"
+    backup_file.write_bytes(b"original-backup")
+
+    swgb_save.SaveGame._create_backup_if_missing(str(save_file))
+
+    # The ``not os.path.exists`` guard is False, so copy2 is skipped and the
+    # pre-existing backup content survives unchanged.
+    assert backup_file.read_bytes() == b"original-backup"  # nosec B101

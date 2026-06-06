@@ -432,3 +432,76 @@ def test_running_swgb_save_gui_as_main_executes_entrypoint(monkeypatch: pytest.M
     runpy.run_path(str(Path(gui.__file__)), run_name="__main__")
 
     assert root.mainloop_called is True  # nosec B101
+
+
+def test_browse_file_keeps_path_when_dialog_is_cancelled(monkeypatch: pytest.MonkeyPatch) -> None:
+    gui, dialog_state, _message_calls = install_fake_tk(monkeypatch)
+    app = gui.SaveGameGUI(gui.tk.Tk())
+    app.file_path.set("previous.ga2")
+
+    # A cancelled dialog returns an empty filename, so the ``if filename`` guard
+    # is False and the existing path is left untouched.
+    dialog_state["filename"] = ""
+    app.browse_file()
+
+    assert app.file_path.get() == "previous.ga2"  # nosec B101
+
+
+def test_edit_resources_ignores_cancelled_dialog(monkeypatch: pytest.MonkeyPatch) -> None:
+    gui, _dialog_state, _message_calls = install_fake_tk(monkeypatch)
+
+    class FakePlayer:  # pylint: disable=too-few-public-methods
+        def __init__(self) -> None:
+            self.name = "Alpha"
+            self.index = 1
+            self.resources = [10.0, 20.0, 30.0, 40.0]
+
+    class FakeSave:  # pylint: disable=too-few-public-methods
+        def __init__(self) -> None:
+            self.players = [FakePlayer()]
+
+    app = gui.SaveGameGUI(gui.tk.Tk())
+    app.current_save = FakeSave()
+    item_id = app.tree.insert("", "end", values=["Alpha (Player 1)", "10", "20", "30", "40"])
+    app.tree.selection_set(item_id)
+
+    class CancelledDialog:  # pylint: disable=too-few-public-methods
+        def __init__(self, *_args, **_kwargs):
+            self.dialog = object()
+            self.result = None
+
+    monkeypatch.setattr(gui, "EditResourceDialog", CancelledDialog)
+    app.edit_resources()
+
+    # ``dialog.result`` is falsy, so the tree row and player stay unchanged.
+    assert app.current_save.players[0].resources == [10.0, 20.0, 30.0, 40.0]  # nosec B101
+    assert app.tree.item(item_id)["values"][1] == "10"  # nosec B101
+
+
+def test_save_changes_reuses_existing_backup(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
+
+    class FakeSave:  # pylint: disable=too-few-public-methods
+        def __init__(self) -> None:
+            self.saved_to = None
+
+        def save(self, filename: str) -> None:
+            self.saved_to = filename
+
+    app = gui.SaveGameGUI(gui.tk.Tk())
+    app.current_save = FakeSave()
+    save_file = tmp_path / "save.ga2"
+    save_file.write_bytes(b"save")
+    backup_file = tmp_path / "save.ga2.backup"
+    backup_file.write_bytes(b"original-backup")
+    app.file_path.set(str(save_file))
+
+    app.save_changes()
+
+    # The backup already exists, so the ``if not os.path.exists`` guard is False
+    # and shutil.copy2 is skipped, leaving the original backup intact.
+    assert backup_file.read_bytes() == b"original-backup"  # nosec B101
+    assert app.current_save.saved_to == str(save_file)  # nosec B101
+    assert message_calls["info"]  # nosec B101
