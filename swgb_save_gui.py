@@ -34,17 +34,17 @@ class EditResourceDialog:
         self.entries = {}
         # Resources in player object are [wood, food, nova, ore]
         # But display them as [carbon, food, nova, ore]
-        for i, (resource, value) in enumerate(
-            [
-                ("Carbon", resources[0]),
-                ("Food", resources[1]),
-                ("Nova", resources[2]),
-                ("Ore", resources[3]),
-            ]
-        ):
-            ttk.Label(self.dialog, text=f"{resource}:").grid(
-                row=i, column=0, padx=5, pady=5, sticky="e"
-            )
+        for i, (resource, value) in enumerate([
+            ("Carbon", resources[0]),
+            ("Food", resources[1]),
+            ("Nova", resources[2]),
+            ("Ore", resources[3]),
+        ]):
+            ttk.Label(self.dialog, text=f"{resource}:").grid(row=i,
+                                                             column=0,
+                                                             padx=5,
+                                                             pady=5,
+                                                             sticky="e")
             var = tk.StringVar(value=f"{value:,.0f}")
             entry = ttk.Entry(self.dialog, textvariable=var)
             entry.grid(row=i, column=1, padx=5, pady=5, sticky="ew")
@@ -54,10 +54,10 @@ class EditResourceDialog:
         button_frame = ttk.Frame(self.dialog)
         button_frame.grid(row=4, column=0, columnspan=2, pady=10)
 
-        ttk.Button(button_frame, text="OK", command=self.ok).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Cancel", command=self.cancel).pack(
-            side=tk.LEFT, padx=5
-        )
+        ttk.Button(button_frame, text="OK", command=self.ok).pack(side=tk.LEFT,
+                                                                  padx=5)
+        ttk.Button(button_frame, text="Cancel",
+                   command=self.cancel).pack(side=tk.LEFT, padx=5)
 
         self.result = None
 
@@ -68,9 +68,11 @@ class EditResourceDialog:
             values = {}
             for resource in ["Carbon", "Food", "Nova", "Ore"]:
                 try:
-                    value = float(self.entries[resource].get().replace(",", ""))
+                    value = float(self.entries[resource].get().replace(
+                        ",", ""))
                     if value < 0 or value > 1000000:  # Reasonable limit
-                        raise ValueError(f"{resource} must be between 0 and 1,000,000")
+                        raise ValueError(
+                            f"{resource} must be between 0 and 1,000,000")
                     values[resource] = value
                 except ValueError as exc:
                     raise ValueError(
@@ -127,12 +129,13 @@ class SaveGameGUI:  # pylint: disable=too-many-instance-attributes
         self.file_label.grid(row=0, column=0, padx=5)
 
         self.file_path = tk.StringVar()
-        self.file_entry = ttk.Entry(self.file_frame, textvariable=self.file_path)
+        self.file_entry = ttk.Entry(self.file_frame,
+                                    textvariable=self.file_path)
         self.file_entry.grid(row=0, column=1, padx=5, sticky=(tk.W, tk.E))
 
-        self.browse_button = ttk.Button(
-            self.file_frame, text="Browse", command=self.browse_file
-        )
+        self.browse_button = ttk.Button(self.file_frame,
+                                        text="Browse",
+                                        command=self.browse_file)
         self.browse_button.grid(row=0, column=2, padx=5)
 
         # Button frame
@@ -140,9 +143,9 @@ class SaveGameGUI:  # pylint: disable=too-many-instance-attributes
         self.button_frame.grid(row=1, column=0, pady=10)
 
         # Load and Save buttons
-        self.load_button = ttk.Button(
-            self.button_frame, text="Load Save File", command=self.load_save
-        )
+        self.load_button = ttk.Button(self.button_frame,
+                                      text="Load Save File",
+                                      command=self.load_save)
         self.load_button.grid(row=0, column=0, padx=5)
 
         self.edit_button = ttk.Button(
@@ -163,7 +166,10 @@ class SaveGameGUI:  # pylint: disable=too-many-instance-attributes
 
         # Players treeview
         self.tree_frame = ttk.Frame(self.main_frame)
-        self.tree_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
+        self.tree_frame.grid(row=2,
+                             column=0,
+                             sticky=(tk.W, tk.E, tk.N, tk.S),
+                             pady=5)
         self.tree_frame.columnconfigure(0, weight=1)
         self.tree_frame.rowconfigure(0, weight=1)
 
@@ -177,16 +183,15 @@ class SaveGameGUI:  # pylint: disable=too-many-instance-attributes
 
         # Configure column headings and widths
         self.tree.heading("Player", text="Player Name")
-        self.tree.column(
-            "Player", width=200, minwidth=150, anchor="w"
-        )  # Left-align player names
+        self.tree.column("Player", width=200, minwidth=150,
+                         anchor="w")  # Left-align player names
 
         # Set fixed widths for resource columns
         for col in ("Carbon", "Food", "Nova", "Ore"):
             self.tree.heading(col, text=col)
             self.tree.column(
-                col, width=90, minwidth=90, stretch=False, anchor="e"
-            )  # Right-align numbers with fixed width
+                col, width=90, minwidth=90, stretch=False,
+                anchor="e")  # Right-align numbers with fixed width
 
         # Make the window resizable
         root.resizable(True, True)
@@ -196,9 +201,9 @@ class SaveGameGUI:  # pylint: disable=too-many-instance-attributes
         self.tree_frame.rowconfigure(0, weight=1)
 
         # Add scrollbar
-        self.scrollbar = ttk.Scrollbar(
-            self.tree_frame, orient=tk.VERTICAL, command=self.tree.yview
-        )
+        self.scrollbar = ttk.Scrollbar(self.tree_frame,
+                                       orient=tk.VERTICAL,
+                                       command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
 
         self.tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -206,9 +211,9 @@ class SaveGameGUI:  # pylint: disable=too-many-instance-attributes
 
         # Status bar
         self.status_var = tk.StringVar()
-        self.status_bar = ttk.Label(
-            self.main_frame, textvariable=self.status_var, relief=tk.SUNKEN
-        )
+        self.status_bar = ttk.Label(self.main_frame,
+                                    textvariable=self.status_var,
+                                    relief=tk.SUNKEN)
         self.status_bar.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=5)
 
         self.status_var.set("Ready")
@@ -248,7 +253,8 @@ class SaveGameGUI:  # pylint: disable=too-many-instance-attributes
                 # Resources in player object are [wood, food, nova, ore]
                 # But display them as [food, wood, nova, ore]
                 values = [
-                    f"{player.name} (Player {player.index})",  # Player name column
+                    # Player name column
+                    f"{player.name} (Player {player.index})",
                     f"{player.resources[0]:,.0f}",  # Carbon (index 0)
                     f"{player.resources[1]:,.0f}",  # Food (index 1)
                     f"{player.resources[2]:,.0f}",  # Nova
@@ -265,14 +271,16 @@ class SaveGameGUI:  # pylint: disable=too-many-instance-attributes
             )
 
         except (OSError, RuntimeError, ValueError, TK_ERROR) as e:
-            messagebox.showerror("Error", f"Failed to load save file: {str(e)}")
+            messagebox.showerror("Error",
+                                 f"Failed to load save file: {str(e)}")
             self.status_var.set("Error loading file")
 
     def edit_resources(self):
         """Edit resources for selected player"""
         selection = self.tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a player to edit")
+            messagebox.showwarning("No Selection",
+                                   "Please select a player to edit")
             return
 
         # Get selected player index

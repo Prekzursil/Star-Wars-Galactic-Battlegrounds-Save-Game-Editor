@@ -15,6 +15,7 @@ import pytest
 
 
 class FakeStringVar:
+
     def __init__(self, value: str = ""):
         self.value = value
 
@@ -26,12 +27,14 @@ class FakeStringVar:
 
 
 class FakeWidget:
+
     def __init__(self, *_args: object, **kwargs: object) -> None:
         self.state = kwargs.get("state")
         self.textvariable = kwargs.get("textvariable")
         self.command = kwargs.get("command")
         self.destroyed = False
-        self._layout_calls: Dict[str, Tuple[Tuple[object, ...], Dict[str, object]]] = {}
+        self._layout_calls: Dict[str, Tuple[Tuple[object, ...],
+                                            Dict[str, object]]] = {}
 
     def grid(self, *args, **kwargs):
         self._layout_calls["grid"] = (args, kwargs)
@@ -61,6 +64,7 @@ class FakeWidget:
 
 
 class FakeRoot(FakeWidget):
+
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         self._window_state: Dict[str, object] = {}
@@ -108,6 +112,7 @@ class FakeRoot(FakeWidget):
 
 
 class FakeTreeview(FakeWidget):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.rows = {}
@@ -154,7 +159,7 @@ class FakeTreeview(FakeWidget):
         return self.selected
 
     def selection_set(self, item_id):
-        self.selected = (item_id,)
+        self.selected = (item_id, )
 
 
 def test_fake_widget_helpers_are_noops() -> None:
@@ -166,27 +171,41 @@ def test_fake_widget_helpers_are_noops() -> None:
 
 
 def install_fake_tk(monkeypatch: pytest.MonkeyPatch):
-    message_calls: Dict[str, List[Tuple[str, str]]] = {"error": [], "warning": [], "info": []}
+    message_calls: Dict[str, List[Tuple[str, str]]] = {
+        "error": [],
+        "warning": [],
+        "info": [],
+    }
     dialog_state = {"filename": ""}
 
     ttk_module = types.ModuleType("tkinter.ttk")
     for widget_name, widget_value in {
-        "Label": FakeWidget,
-        "Entry": FakeWidget,
-        "Frame": FakeWidget,
-        "Button": FakeWidget,
-        "Treeview": FakeTreeview,
-        "Scrollbar": FakeWidget,
+            "Label": FakeWidget,
+            "Entry": FakeWidget,
+            "Frame": FakeWidget,
+            "Button": FakeWidget,
+            "Treeview": FakeTreeview,
+            "Scrollbar": FakeWidget,
     }.items():
         setattr(ttk_module, widget_name, widget_value)
 
     filedialog_module = types.ModuleType("tkinter.filedialog")
-    setattr(filedialog_module, "askopenfilename", lambda **_kwargs: dialog_state["filename"])
+    setattr(filedialog_module, "askopenfilename",
+            lambda **_kwargs: dialog_state["filename"])
 
     messagebox_module = types.ModuleType("tkinter.messagebox")
-    setattr(messagebox_module, "showerror", lambda *args: message_calls["error"].append(args))
-    setattr(messagebox_module, "showwarning", lambda *args: message_calls["warning"].append(args))
-    setattr(messagebox_module, "showinfo", lambda *args: message_calls["info"].append(args))
+    setattr(
+        messagebox_module,
+        "showerror",
+        lambda *args: message_calls["error"].append(args),
+    )
+    setattr(
+        messagebox_module,
+        "showwarning",
+        lambda *args: message_calls["warning"].append(args),
+    )
+    setattr(messagebox_module, "showinfo",
+            lambda *args: message_calls["info"].append(args))
 
     tk_module = types.ModuleType("tkinter")
     tk_members: Dict[str, object] = {
@@ -219,10 +238,12 @@ def install_fake_tk(monkeypatch: pytest.MonkeyPatch):
     return module, dialog_state, message_calls
 
 
-def test_edit_resource_dialog_accepts_valid_values(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_edit_resource_dialog_accepts_valid_values(
+    monkeypatch: pytest.MonkeyPatch, ) -> None:
     gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
 
-    dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One", [1.0, 2.0, 3.0, 4.0])
+    dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One",
+                                    [1.0, 2.0, 3.0, 4.0])
     dialog.entries["Carbon"].set("10")
     dialog.entries["Food"].set("20")
     dialog.entries["Nova"].set("30")
@@ -235,10 +256,12 @@ def test_edit_resource_dialog_accepts_valid_values(monkeypatch: pytest.MonkeyPat
     assert not message_calls["error"]  # nosec B101
 
 
-def test_edit_resource_dialog_rejects_invalid_values(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_edit_resource_dialog_rejects_invalid_values(
+    monkeypatch: pytest.MonkeyPatch, ) -> None:
     gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
 
-    dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One", [1.0, 2.0, 3.0, 4.0])
+    dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One",
+                                    [1.0, 2.0, 3.0, 4.0])
     dialog.entries["Carbon"].set("-1")
 
     dialog.ok()
@@ -248,12 +271,15 @@ def test_edit_resource_dialog_rejects_invalid_values(monkeypatch: pytest.MonkeyP
     assert message_calls["error"]  # nosec B101
 
 
-def test_edit_resource_dialog_handles_unexpected_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_edit_resource_dialog_handles_unexpected_errors(
+    monkeypatch: pytest.MonkeyPatch, ) -> None:
     gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
 
-    dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One", [1.0, 2.0, 3.0, 4.0])
+    dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One",
+                                    [1.0, 2.0, 3.0, 4.0])
 
     class BrokenVar:  # pylint: disable=too-few-public-methods
+
         @staticmethod
         def get():
             raise RuntimeError("boom")
@@ -264,30 +290,35 @@ def test_edit_resource_dialog_handles_unexpected_errors(monkeypatch: pytest.Monk
 
     assert dialog.result is None  # nosec B101
     assert dialog.dialog.destroyed is False  # nosec B101
-    assert message_calls["error"][-1] == ("Error", "Failed to save changes: boom")  # nosec B101
+    # nosec B101
+    assert message_calls["error"][-1] == ("Error",
+                                          "Failed to save changes: boom")
 
 
-def test_edit_resource_dialog_cancel_closes_dialog(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_edit_resource_dialog_cancel_closes_dialog(
+    monkeypatch: pytest.MonkeyPatch, ) -> None:
     gui, _dialog_state, _message_calls = install_fake_tk(monkeypatch)
 
-    dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One", [1.0, 2.0, 3.0, 4.0])
+    dialog = gui.EditResourceDialog(gui.tk.Tk(), "Player One",
+                                    [1.0, 2.0, 3.0, 4.0])
     dialog.cancel()
 
     assert dialog.dialog.destroyed is True  # nosec B101
 
 
 def test_save_game_gui_loads_browse_edit_and_save_flows(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     gui, dialog_state, message_calls = install_fake_tk(monkeypatch)
 
     class FakePlayer:  # pylint: disable=too-few-public-methods
+
         def __init__(self, name, index, resources):
             self.name = name
             self.index = index
             self.resources = resources
 
     class FakeSaveGame:
+
         def __init__(self, filename: str):
             self.filename = filename
             self.players = [FakePlayer("Alpha", 1, [10.0, 20.0, 30.0, 40.0])]
@@ -324,13 +355,19 @@ def test_save_game_gui_loads_browse_edit_and_save_flows(
     app.tree.selection_set(tree_items[0])
 
     class FakeDialog:  # pylint: disable=too-few-public-methods
+
         def __init__(self, *_args, **_kwargs):
             self.dialog = object()
             self.result = [100.0, 200.0, 300.0, 400.0]
 
     monkeypatch.setattr(gui, "EditResourceDialog", FakeDialog)
     app.edit_resources()
-    assert app.current_save.players[0].resources == [100.0, 200.0, 300.0, 400.0]  # nosec B101
+    assert app.current_save.players[0].resources == [
+        100.0,
+        200.0,
+        300.0,
+        400.0,
+    ]  # nosec B101
     assert "Updated resources" in app.status_var.get()  # nosec B101
 
     app.save_changes()
@@ -339,8 +376,7 @@ def test_save_game_gui_loads_browse_edit_and_save_flows(
 
 
 def test_save_game_gui_handles_missing_selection_and_save_errors(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
     root = gui.tk.Tk()
     app = gui.SaveGameGUI(root)
@@ -349,6 +385,7 @@ def test_save_game_gui_handles_missing_selection_and_save_errors(
     assert message_calls["warning"]  # nosec B101
 
     class FailingSave:  # pylint: disable=too-few-public-methods
+
         @staticmethod
         def save(_filename):
             raise RuntimeError("boom")
@@ -371,10 +408,12 @@ def test_load_save_requires_a_path(monkeypatch: pytest.MonkeyPatch) -> None:
     assert message_calls["error"]  # nosec B101
 
 
-def test_load_save_surfaces_read_errors(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_load_save_surfaces_read_errors(monkeypatch: pytest.MonkeyPatch,
+                                        tmp_path: Path) -> None:
     gui, dialog_state, message_calls = install_fake_tk(monkeypatch)
 
     class BrokenSaveGame:  # pylint: disable=too-few-public-methods
+
         def __init__(self, _filename: str):
             self.players: List[object] = []
 
@@ -397,22 +436,29 @@ def test_load_save_surfaces_read_errors(monkeypatch: pytest.MonkeyPatch, tmp_pat
     assert app.status_var.get() == "Error loading file"  # nosec B101
 
 
-def test_save_changes_returns_early_when_no_current_save(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_save_changes_returns_early_when_no_current_save(
+    monkeypatch: pytest.MonkeyPatch, ) -> None:
     gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
     app = gui.SaveGameGUI(gui.tk.Tk())
 
     app.save_changes()
 
-    assert message_calls == {"error": [], "warning": [], "info": []}  # nosec B101
+    assert message_calls == {
+        "error": [],
+        "warning": [],
+        "info": []
+    }  # nosec B101
 
 
-def test_main_builds_gui_and_enters_mainloop(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_main_builds_gui_and_enters_mainloop(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     gui, _dialog_state, _message_calls = install_fake_tk(monkeypatch)
     root = gui.tk.Tk()
     monkeypatch.setattr(gui.tk, "Tk", lambda: root)
     captured = {}
 
     class FakeApp:  # pylint: disable=too-few-public-methods
+
         def __init__(self, passed_root):
             captured["root"] = passed_root
 
@@ -424,7 +470,8 @@ def test_main_builds_gui_and_enters_mainloop(monkeypatch: pytest.MonkeyPatch) ->
     assert root.mainloop_called is True  # nosec B101
 
 
-def test_running_swgb_save_gui_as_main_executes_entrypoint(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_running_swgb_save_gui_as_main_executes_entrypoint(
+    monkeypatch: pytest.MonkeyPatch, ) -> None:
     gui, _dialog_state, _message_calls = install_fake_tk(monkeypatch)
     root = gui.tk.Tk()
     monkeypatch.setattr(gui.tk, "Tk", lambda: root)
@@ -434,7 +481,8 @@ def test_running_swgb_save_gui_as_main_executes_entrypoint(monkeypatch: pytest.M
     assert root.mainloop_called is True  # nosec B101
 
 
-def test_browse_file_keeps_path_when_dialog_is_cancelled(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_browse_file_keeps_path_when_dialog_is_cancelled(
+    monkeypatch: pytest.MonkeyPatch, ) -> None:
     gui, dialog_state, _message_calls = install_fake_tk(monkeypatch)
     app = gui.SaveGameGUI(gui.tk.Tk())
     app.file_path.set("previous.ga2")
@@ -447,25 +495,30 @@ def test_browse_file_keeps_path_when_dialog_is_cancelled(monkeypatch: pytest.Mon
     assert app.file_path.get() == "previous.ga2"  # nosec B101
 
 
-def test_edit_resources_ignores_cancelled_dialog(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_edit_resources_ignores_cancelled_dialog(
+    monkeypatch: pytest.MonkeyPatch, ) -> None:
     gui, _dialog_state, _message_calls = install_fake_tk(monkeypatch)
 
     class FakePlayer:  # pylint: disable=too-few-public-methods
+
         def __init__(self) -> None:
             self.name = "Alpha"
             self.index = 1
             self.resources = [10.0, 20.0, 30.0, 40.0]
 
     class FakeSave:  # pylint: disable=too-few-public-methods
+
         def __init__(self) -> None:
             self.players = [FakePlayer()]
 
     app = gui.SaveGameGUI(gui.tk.Tk())
     app.current_save = FakeSave()
-    item_id = app.tree.insert("", "end", values=["Alpha (Player 1)", "10", "20", "30", "40"])
+    item_id = app.tree.insert(
+        "", "end", values=["Alpha (Player 1)", "10", "20", "30", "40"])
     app.tree.selection_set(item_id)
 
     class CancelledDialog:  # pylint: disable=too-few-public-methods
+
         def __init__(self, *_args, **_kwargs):
             self.dialog = object()
             self.result = None
@@ -474,16 +527,21 @@ def test_edit_resources_ignores_cancelled_dialog(monkeypatch: pytest.MonkeyPatch
     app.edit_resources()
 
     # ``dialog.result`` is falsy, so the tree row and player stay unchanged.
-    assert app.current_save.players[0].resources == [10.0, 20.0, 30.0, 40.0]  # nosec B101
+    assert app.current_save.players[0].resources == [
+        10.0,
+        20.0,
+        30.0,
+        40.0,
+    ]  # nosec B101
     assert app.tree.item(item_id)["values"][1] == "10"  # nosec B101
 
 
-def test_save_changes_reuses_existing_backup(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_save_changes_reuses_existing_backup(monkeypatch: pytest.MonkeyPatch,
+                                             tmp_path: Path) -> None:
     gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
 
     class FakeSave:  # pylint: disable=too-few-public-methods
+
         def __init__(self) -> None:
             self.saved_to = None
 
