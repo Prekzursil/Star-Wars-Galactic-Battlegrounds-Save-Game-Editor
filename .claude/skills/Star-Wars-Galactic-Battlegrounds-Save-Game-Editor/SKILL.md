@@ -1,4 +1,4 @@
-```markdown
+````markdown
 # Star-Wars-Galactic-Battlegrounds-Save-Game-Editor Development Patterns
 
 > Auto-generated skill from repository analysis
@@ -35,7 +35,7 @@ This skill teaches you the development patterns, coding conventions, and common 
 ### Commit Messages
 
 - **Conventional commit** prefixes are used, such as `style:` and `test:`.
-  - Example:  
+  - Example:
     ```
     style: apply Black formatting to swgb_save.py and tests
     test: add edge case tests for invalid save file headers
@@ -54,19 +54,22 @@ This skill teaches you the development patterns, coding conventions, and common 
 2. Apply any necessary manual fixes to resolve linter warnings.
 3. Commit changes to both source and test files.
 
-**Files involved:**  
-- `swgb_save.py`  
-- `swgb_save_gui.py`  
-- `tests/test_swgb_save.py`  
+**Files involved:**
+
+- `swgb_save.py`
+- `swgb_save_gui.py`
+- `tests/test_swgb_save.py`
 - `tests/test_swgb_save_gui.py`
 
 **Example:**
+
 ```bash
 black swgb_save.py swgb_save_gui.py tests/
 isort swgb_save.py swgb_save_gui.py tests/
 # Manually fix any remaining linter warnings
 git commit -am "style: apply code formatting and lint fixes"
 ```
+````
 
 ---
 
@@ -80,11 +83,13 @@ git commit -am "style: apply code formatting and lint fixes"
 3. Verify coverage locally.
 4. Commit test changes.
 
-**Files involved:**  
-- `tests/test_swgb_save.py`  
+**Files involved:**
+
+- `tests/test_swgb_save.py`
 - `tests/test_swgb_save_gui.py`
 
 **Example:**
+
 ```bash
 pytest --cov=.
 # Add tests for uncovered code paths
@@ -103,11 +108,13 @@ git commit -m "test: increase coverage for SaveGame edge cases"
 2. Refactor methods (e.g., convert to `@staticmethod`) as per linter suggestions.
 3. Commit changes to affected source files.
 
-**Files involved:**  
-- `swgb_save.py`  
+**Files involved:**
+
+- `swgb_save.py`
 - `swgb_save_gui.py`
 
 **Example:**
+
 ```python
 from __future__ import annotations
 
@@ -116,6 +123,7 @@ class SaveGame:
     def parse_header(data: bytes) -> dict:
         ...
 ```
+
 ```bash
 git commit -am "style: add __future__ imports and refactor to staticmethods"
 ```
@@ -129,6 +137,7 @@ git commit -am "style: add __future__ imports and refactor to staticmethods"
 - The testing framework is not explicitly specified, but `pytest` conventions are compatible.
 
 **Example:**
+
 ```python
 def test_parse_header_valid():
     data = b"SWGB"
@@ -140,9 +149,12 @@ def test_parse_header_valid():
 
 ## Commands
 
-| Command             | Purpose                                                      |
-|---------------------|--------------------------------------------------------------|
-| /format-code        | Standardize code formatting and resolve linter warnings      |
-| /increase-coverage  | Add or update tests to increase code coverage                |
-| /fix-python-compat  | Apply Python compatibility imports and best-practice fixes   |
+| Command            | Purpose                                                    |
+| ------------------ | ---------------------------------------------------------- |
+| /format-code       | Standardize code formatting and resolve linter warnings    |
+| /increase-coverage | Add or update tests to increase code coverage              |
+| /fix-python-compat | Apply Python compatibility imports and best-practice fixes |
+
+```
+
 ```

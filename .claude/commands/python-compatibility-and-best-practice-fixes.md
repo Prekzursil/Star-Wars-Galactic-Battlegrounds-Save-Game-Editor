@@ -26,7 +26,7 @@ Applies Python compatibility imports and best-practice refactoring (e.g., static
 
 ## Typical Commit Signals
 
-- Add necessary __future__ imports for compatibility.
+- Add necessary **future** imports for compatibility.
 - Refactor methods (e.g., to staticmethod) as per linter suggestions.
 - Commit changes to affected source files.
 
