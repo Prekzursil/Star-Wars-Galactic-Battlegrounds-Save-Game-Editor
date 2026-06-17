@@ -1,0 +1,20 @@
+# gitleaks configuration for the lean secrets gate (pinned tool: gitleaks 8.30.1).
+# The gate runs via pre-commit over the working tree and must report 0.
+# Extends the upstream default ruleset; we only add path allowlists for
+# generated/vendored trees. No real secrets exist in this repo.
+title = "SWGB Save Editor lean secrets gate"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Generated/vendored trees only (not real secrets)."
+paths = [
+  '''(^|/)\.venv/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)dist/''',
+  '''(^|/)build/''',
+  '''(^|/)out/''',
+  '''(^|/)\.git/''',
+  '''.*\.egg-info/''',
+]

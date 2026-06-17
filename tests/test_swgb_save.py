@@ -1,13 +1,13 @@
 from __future__ import absolute_import, division
 
+import builtins
+
 # mypy: disable-error-code=assignment
 # pylint: disable=protected-access
-
 import runpy
 import struct
 import sys
 import zlib
-import builtins
 from pathlib import Path
 from typing import List, Tuple
 
@@ -91,9 +91,7 @@ def test_read_parses_player_resources_and_tracks_successful_wbits(
 
     assert calls == [zlib.MAX_WBITS, 15, -15]  # nosec B101
     assert save.wbits == -15  # nosec B101
-    assert [
-        (player.name, player.index, player.resources) for player in save.players
-    ] == [  # nosec B101
+    assert [(player.name, player.index, player.resources) for player in save.players] == [  # nosec B101
         ("Player One", 1, [20.0, 10.0, 30.0, 40.0])
     ]
 
@@ -433,9 +431,7 @@ def test_save_logs_mismatched_written_values_for_direct_name_updates(
     assert "WARNING: Resource value mismatch!" in capsys.readouterr().out  # nosec B101
 
 
-def test_save_handles_invalid_direct_name_characters(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_save_handles_invalid_direct_name_characters(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     path = tmp_path / "invalid-direct.ga2"
     payload = (
         b"\x00" * 16
@@ -453,15 +449,10 @@ def test_save_handles_invalid_direct_name_characters(
 
     save.save()
 
-    assert (
-        "Warning: Could not update resources for players: {'Han'}"
-        in capsys.readouterr().out
-    )  # nosec B101
+    assert "Warning: Could not update resources for players: {'Han'}" in capsys.readouterr().out  # nosec B101
 
 
-def test_save_skips_direct_name_candidates_with_invalid_characters(
-    tmp_path: Path
-) -> None:
+def test_save_skips_direct_name_candidates_with_invalid_characters(tmp_path: Path) -> None:
     path = tmp_path / "direct-invalid.ga2"
     payload = (
         b"\x00" * 16

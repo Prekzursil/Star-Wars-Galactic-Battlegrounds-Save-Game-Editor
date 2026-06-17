@@ -10,7 +10,6 @@ import zlib
 from dataclasses import dataclass
 from typing import List, Optional, Set, Tuple
 
-
 PLAYER_PATTERN = bytes.fromhex("16db00000021")
 NAME_SEARCH_WINDOW = 512
 MAX_NAME_BYTES = 32
@@ -86,9 +85,7 @@ class SaveGame:
         for index in range(0, min(len(data), length), 16):
             chunk = data[index : index + 16]
             hex_part = " ".join(f"{byte:02x}" for byte in chunk).ljust(48)
-            ascii_part = "".join(
-                chr(byte) if 32 <= byte <= 126 else "." for byte in chunk
-            )
+            ascii_part = "".join(chr(byte) if 32 <= byte <= 126 else "." for byte in chunk)
             result.append(f"{offset + index:08x}: {hex_part} |{ascii_part}|")
         return "\n".join(result)
 
@@ -105,26 +102,17 @@ class SaveGame:
 
     @staticmethod
     def _is_name_byte(byte_value: int) -> bool:
-        return (
-            byte_value == 32
-            or 48 <= byte_value <= 57
-            or 65 <= byte_value <= 90
-            or 97 <= byte_value <= 122
-        )
+        return byte_value == 32 or 48 <= byte_value <= 57 or 65 <= byte_value <= 90 or 97 <= byte_value <= 122
 
     @staticmethod
     def _is_valid_candidate_name(candidate: str, min_length: int) -> bool:
         return (
             len(candidate) >= min_length
             and candidate.isprintable()
-            and all(
-                character.isalnum() or character.isspace() for character in candidate
-            )
+            and all(character.isalnum() or character.isspace() for character in candidate)
         )
 
-    def _decode_candidate_name(
-        self, start: int, end: int, *, min_length: int
-    ) -> Optional[str]:
+    def _decode_candidate_name(self, start: int, end: int, *, min_length: int) -> Optional[str]:
         if self.data is None or end <= start:
             return None
         try:
@@ -142,9 +130,7 @@ class SaveGame:
             return None
         name_start = offset + 2
         name_end = self._find_null_terminated_end(name_start, search_end)
-        return self._decode_candidate_name(
-            name_start, name_end, min_length=MIN_MARKER_NAME_LENGTH
-        )
+        return self._decode_candidate_name(name_start, name_end, min_length=MIN_MARKER_NAME_LENGTH)
 
     def _name_from_direct_scan(self, offset: int, search_end: int) -> Optional[str]:
         if self.data is None or offset + MIN_DIRECT_NAME_LENGTH > search_end:
@@ -158,9 +144,7 @@ class SaveGame:
             if not self._is_name_byte(current_byte):
                 break
             name_end += 1
-        return self._decode_candidate_name(
-            offset, name_end, min_length=MIN_DIRECT_NAME_LENGTH
-        )
+        return self._decode_candidate_name(offset, name_end, min_length=MIN_DIRECT_NAME_LENGTH)
 
     def _find_name_before_pattern(
         self,
@@ -188,9 +172,7 @@ class SaveGame:
         resource_start = pattern_pos + len(PLAYER_PATTERN)
         values: List[float] = []
         for index in range(RESOURCE_COUNT):
-            chunk = self.data[
-                resource_start + index * 4 : resource_start + (index + 1) * 4
-            ]
+            chunk = self.data[resource_start + index * 4 : resource_start + (index + 1) * 4]
             try:
                 value = struct.unpack("<f", chunk)[0]
             except struct.error:
@@ -204,9 +186,7 @@ class SaveGame:
     def _reorder_resources(values: List[float]) -> List[float]:
         return [values[1], values[0], values[2], values[3]]
 
-    def _build_entry(
-        self, pattern_pos: int, name: str, player_num: int
-    ) -> Tuple[int, str, int, bytes]:
+    def _build_entry(self, pattern_pos: int, name: str, player_num: int) -> Tuple[int, str, int, bytes]:
         if self.data is None:
             return pattern_pos, name, player_num, b""
         resource_start = pattern_pos + len(PLAYER_PATTERN)
@@ -223,9 +203,7 @@ class SaveGame:
         if self.data is None:
             return entries
 
-        print(
-            f"Searching for player pattern: {' '.join(f'{byte:02x}' for byte in PLAYER_PATTERN)}"
-        )
+        print(f"Searching for player pattern: {' '.join(f'{byte:02x}' for byte in PLAYER_PATTERN)}")
         pos = 0
 
         while pos < len(self.data) - 32:
@@ -236,9 +214,7 @@ class SaveGame:
 
             print(f"\nFound pattern at offset {pattern_pos}")
             print("Context (64 bytes):")
-            print(
-                self._hex_dump(self.data[pattern_pos : pattern_pos + 64], pattern_pos)
-            )
+            print(self._hex_dump(self.data[pattern_pos : pattern_pos + 64], pattern_pos))
 
             try:
                 values = self._read_resource_values(pattern_pos)
@@ -258,11 +234,7 @@ class SaveGame:
                 print(f"Name: {name}")
                 print(f"Resources: {values}")
                 print("Context:")
-                print(
-                    self._hex_dump(
-                        self.data[pattern_pos : pattern_pos + 32], pattern_pos
-                    )
-                )
+                print(self._hex_dump(self.data[pattern_pos : pattern_pos + 32], pattern_pos))
 
                 player = Player(name, player_num, self._reorder_resources(values))
                 self.players.append(player)
@@ -274,43 +246,31 @@ class SaveGame:
 
         return entries
 
-    def _match_player(
-        self, candidate_name: str, updated_players: Set[str]
-    ) -> Optional[Player]:
+    def _match_player(self, candidate_name: str, updated_players: Set[str]) -> Optional[Player]:
         for player in self.players:
             if player.name == candidate_name and player.name not in updated_players:
                 return player
         return None
 
     @staticmethod
-    def _write_resources(
-        data: bytearray, resource_start: int, resources: List[float]
-    ) -> None:
+    def _write_resources(data: bytearray, resource_start: int, resources: List[float]) -> None:
         for index, value in enumerate(resources):
             value_bytes = struct.pack("<f", value)
-            data[resource_start + index * 4 : resource_start + (index + 1) * 4] = (
-                value_bytes
-            )
+            data[resource_start + index * 4 : resource_start + (index + 1) * 4] = value_bytes
 
     @staticmethod
-    def _verify_written_resources(
-        data: bytearray, resource_start: int, resources: List[float]
-    ) -> None:
+    def _verify_written_resources(data: bytearray, resource_start: int, resources: List[float]) -> None:
         print("\nVerifying resource values:")
         for index, expected_value in enumerate(resources):
             actual_value = struct.unpack(
                 "<f",
                 data[resource_start + index * 4 : resource_start + (index + 1) * 4],
             )[0]
-            print(
-                f"Resource {index}: Expected {expected_value:,.0f}, Got {actual_value:,.0f}"
-            )
+            print(f"Resource {index}: Expected {expected_value:,.0f}, Got {actual_value:,.0f}")
             if abs(actual_value - expected_value) > 0.01:
                 print("WARNING: Resource value mismatch!")
 
-    def _update_matching_player(
-        self, pattern_pos: int, data: bytearray, updated_players: Set[str]
-    ) -> bool:
+    def _update_matching_player(self, pattern_pos: int, data: bytearray, updated_players: Set[str]) -> bool:
         candidate_name = self._find_name_before_pattern(
             pattern_pos,
             default_name="",
@@ -331,16 +291,10 @@ class SaveGame:
         resource_start = pattern_pos + len(PLAYER_PATTERN)
         print(f"Updating resources at offset {resource_start}")
         print("Before update:")
-        print(
-            self._hex_dump(
-                self.data[resource_start : resource_start + 16], resource_start
-            )
-        )
+        print(self._hex_dump(self.data[resource_start : resource_start + 16], resource_start))
         self._write_resources(data, resource_start, player.resources)
         print("After update:")
-        print(
-            self._hex_dump(data[resource_start : resource_start + 16], resource_start)
-        )
+        print(self._hex_dump(data[resource_start : resource_start + 16], resource_start))
         self._verify_written_resources(data, resource_start, player.resources)
         updated_players.add(player.name)
         return True

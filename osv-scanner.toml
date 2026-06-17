@@ -1,0 +1,9 @@
+# osv-scanner configuration for the lean dependency gate (pinned tool: osv-scanner 2.3.8).
+# Runs `osv-scanner scan source --config=osv-scanner.toml --recursive .` and must
+# report 0 actionable CVEs.
+#
+# This editor is a pure-stdlib Python tool (no runtime third-party dependencies
+# and no committed lockfile), so osv-scanner currently has no manifests to scan
+# and reports clean-zero. Add a dated, reasoned [[IgnoredVulns]] entry here only
+# for a future vuln that is genuinely unfixable or provably unreachable in THIS
+# product — we do NOT use a baseline file.

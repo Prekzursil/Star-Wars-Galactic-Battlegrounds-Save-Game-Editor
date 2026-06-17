@@ -181,12 +181,12 @@ def install_fake_tk(monkeypatch: pytest.MonkeyPatch):
         setattr(ttk_module, widget_name, widget_value)
 
     filedialog_module = types.ModuleType("tkinter.filedialog")
-    setattr(filedialog_module, "askopenfilename", lambda **_kwargs: dialog_state["filename"])
+    filedialog_module.askopenfilename = lambda **_kwargs: dialog_state["filename"]
 
     messagebox_module = types.ModuleType("tkinter.messagebox")
-    setattr(messagebox_module, "showerror", lambda *args: message_calls["error"].append(args))
-    setattr(messagebox_module, "showwarning", lambda *args: message_calls["warning"].append(args))
-    setattr(messagebox_module, "showinfo", lambda *args: message_calls["info"].append(args))
+    messagebox_module.showerror = lambda *args: message_calls["error"].append(args)
+    messagebox_module.showwarning = lambda *args: message_calls["warning"].append(args)
+    messagebox_module.showinfo = lambda *args: message_calls["info"].append(args)
 
     tk_module = types.ModuleType("tkinter")
     tk_members: Dict[str, object] = {
@@ -276,9 +276,7 @@ def test_edit_resource_dialog_cancel_closes_dialog(monkeypatch: pytest.MonkeyPat
     assert dialog.dialog.destroyed is True  # nosec B101
 
 
-def test_save_game_gui_loads_browse_edit_and_save_flows(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_save_game_gui_loads_browse_edit_and_save_flows(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     gui, dialog_state, message_calls = install_fake_tk(monkeypatch)
 
     class FakePlayer:  # pylint: disable=too-few-public-methods
@@ -432,3 +430,89 @@ def test_running_swgb_save_gui_as_main_executes_entrypoint(monkeypatch: pytest.M
     runpy.run_path(str(Path(gui.__file__)), run_name="__main__")
 
     assert root.mainloop_called is True  # nosec B101
+
+
+def test_browse_file_keeps_path_when_dialog_cancelled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`browse_file` false branch (206->exit): an empty dialog result is a no-op."""
+    gui, dialog_state, _message_calls = install_fake_tk(monkeypatch)
+    app = gui.SaveGameGUI(gui.tk.Tk())
+    app.file_path.set("unchanged.ga2")
+
+    dialog_state["filename"] = ""  # cancelled dialog returns empty string
+    app.browse_file()
+
+    assert app.file_path.get() == "unchanged.ga2"  # nosec B101
+
+
+def test_edit_resources_skips_update_when_dialog_cancelled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`edit_resources` false branch (267->exit): a falsy dialog result skips the update."""
+    gui, _dialog_state, _message_calls = install_fake_tk(monkeypatch)
+
+    class FakePlayer:  # pylint: disable=too-few-public-methods
+        def __init__(self) -> None:
+            self.name = "Alpha"
+            self.index = 1
+            self.resources = [10.0, 20.0, 30.0, 40.0]
+
+    class FakeCurrentSave:  # pylint: disable=too-few-public-methods
+        def __init__(self) -> None:
+            self.players = [FakePlayer()]
+
+    class CancelledDialog:  # pylint: disable=too-few-public-methods
+        def __init__(self, *_args, **_kwargs) -> None:
+            self.dialog = object()
+            self.result = None  # cancelled / invalid -> falsy
+
+    app = gui.SaveGameGUI(gui.tk.Tk())
+    app.current_save = FakeCurrentSave()
+    app.tree.insert("", "end", values=["Alpha (Player 1)", "10", "20", "30", "40"])
+    items = app.tree.get_children()
+    app.tree.selection_set(items[0])
+    monkeypatch.setattr(gui, "EditResourceDialog", CancelledDialog)
+
+    app.edit_resources()
+
+    # Resources untouched and no "Updated resources" status set.
+    assert app.current_save.players[0].resources == [10.0, 20.0, 30.0, 40.0]  # nosec B101
+    assert "Updated resources" not in app.status_var.get()  # nosec B101
+
+
+def test_edit_resources_returns_early_when_no_save_loaded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`edit_resources` guard branch: a selection without a loaded save is a no-op."""
+    gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
+    app = gui.SaveGameGUI(gui.tk.Tk())
+    # A row is selected but no save has been loaded (current_save is None).
+    app.tree.insert("", "end", values=["orphan"])
+    app.tree.selection_set(app.tree.get_children()[0])
+
+    app.edit_resources()
+
+    assert app.current_save is None  # nosec B101
+    assert message_calls == {"error": [], "warning": [], "info": []}  # nosec B101
+
+
+def test_save_changes_skips_backup_when_backup_exists(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """`save_changes` false branch (292->296): an existing backup is not overwritten."""
+    gui, _dialog_state, message_calls = install_fake_tk(monkeypatch)
+
+    class FakeSave:  # pylint: disable=too-few-public-methods
+        def __init__(self) -> None:
+            self.saved_to = None
+
+        def save(self, filename):
+            self.saved_to = filename
+
+    app = gui.SaveGameGUI(gui.tk.Tk())
+    save_file = tmp_path / "save.ga2"
+    save_file.write_bytes(b"new-content")
+    backup = tmp_path / "save.ga2.backup"
+    backup.write_bytes(b"pre-existing-backup")
+    app.current_save = FakeSave()
+    app.file_path.set(str(save_file))
+
+    app.save_changes()
+
+    # Backup copy skipped: pre-existing content preserved, save still ran.
+    assert backup.read_bytes() == b"pre-existing-backup"  # nosec B101
+    assert app.current_save.saved_to == str(save_file)  # nosec B101
+    assert message_calls["info"]  # nosec B101
