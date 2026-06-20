@@ -1,0 +1,23 @@
+# osv-scanner configuration for the lean dependency gate (pinned tool: osv-scanner 2.3.8).
+# Runs `osv-scanner scan source --config=osv-scanner.toml --recursive .` and must
+# report 0 actionable CVEs.
+#
+# This editor is a pure-stdlib Python tool: zero runtime third-party
+# dependencies and no committed lockfile/manifest. There is genuinely nothing
+# for osv-scanner to scan.
+#
+# KNOWN TEMPLATE GAP (operator/blocked, 2026-06-17): `osv-scanner 2.3.8 scan
+# source` EXITS 128 ("No package sources found") on a dependency-free tree,
+# rather than treating "nothing to scan" as a clean pass. The lean template's
+# gate-deps step (`osv-scanner scan source --config=osv-scanner.toml
+# --recursive .`) therefore fails red on this repo even though there are no
+# dependencies and no CVEs. We do NOT paper over it by fabricating a lockfile
+# of dev tooling — pinning e.g. pre-commit drags in vulnerable transitives
+# (filelock/pygments) and would fail clean-zero anyway, which is dishonest
+# signal. The fix belongs in the template (tolerate exit 128 / "No package
+# sources found" as success, or `|| true` on empty trees) and is tracked for
+# the migration runbook. Dependabot (.github/dependabot.yml) already covers the
+# github-actions half of gate 6.
+#
+# Add a dated, reasoned [[IgnoredVulns]] entry below only for a future vuln that
+# is genuinely unfixable or provably unreachable — we do NOT use a baseline file.

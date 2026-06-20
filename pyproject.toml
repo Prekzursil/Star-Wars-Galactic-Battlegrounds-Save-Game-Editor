@@ -1,0 +1,88 @@
+# Root tooling config for the lean 6-gate quality model.
+# Centralizes Ruff (gate 1), basedpyright (gate 2), and pytest+coverage (gate 3)
+# so the gates run identically locally and in CI (.github/workflows/quality.yml).
+#
+# Presence of this file is also what arms the reusable template's Python
+# tests+coverage lane (it guards on hashFiles('pyproject.toml','setup.cfg',
+# 'tox.ini')); without it the 100% coverage gate would silently skip.
+
+[tool.ruff]
+# Pinned tool: ruff 0.15.17 (see .pre-commit-config.yaml).
+target-version = "py311"
+line-length = 120
+extend-exclude = [
+  ".venv",
+  "node_modules",
+  "dist",
+  "build",
+  "out",
+]
+
+[tool.ruff.lint]
+# Deterministic rule set: pyflakes (F), pycodestyle (E/W), isort (I),
+# pep8-naming (N), pyupgrade (UP), flake8-bugbear (B), comprehensions (C4),
+# flake8-simplify (SIM). Auto-fixers run first; residuals are reported.
+select = ["E", "F", "W", "I", "N", "B", "C4", "SIM"]
+ignore = [
+  "E501", # line length handled by the formatter
+  # UP is intentionally NOT selected: the QZT py2-compat commit contract still
+  # requires typing.Dict/List/etc. and `from __future__ import absolute_import`
+  # until the SaaS machinery is removed in the runbook. pyupgrade would fight it.
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests deliberately use assert and shadow/mirror names of the SUT and its stubs.
+"tests/**" = ["N801", "N802", "N803", "N806", "N812", "N814", "B011"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# basedpyright type gate (pinned: basedpyright 1.39.8).
+[tool.basedpyright]
+typeCheckingMode = "standard"
+pythonVersion = "3.11"
+include = [
+  "swgb_save.py",
+  "swgb_save_gui.py",
+]
+exclude = [
+  "**/node_modules",
+  "**/__pycache__",
+  ".venv",
+  "**/tests",
+  "scripts",
+]
+reportMissingImports = "warning"
+reportMissingModuleSource = "none"
+# bytearray genuinely satisfies the read-only bytes-like contract of the
+# internal _hex_dump helper (it only indexes/slices). Standard CPython type
+# semantics promote bytearray/memoryview to bytes; basedpyright disables this
+# by default, so we re-enable the idiomatic behavior rather than cast at the
+# call site.
+disableBytesTypePromotions = false
+
+# pytest + coverage (gate 3): STRICT 100% line+branch over the app modules.
+# The reusable template runs `pytest --cov --cov-branch --cov-fail-under=100`;
+# `--cov` with no arg reads tool.coverage.run.source below.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+branch = true
+# App surface under the 100% gate. scripts/security_helpers.py is legacy
+# QZT-SaaS tooling (not part of the editor) and is scheduled for removal with
+# the rest of the SaaS machinery in the migration runbook; it is intentionally
+# out of the lean app coverage scope rather than padded with throwaway tests.
+source = [
+  "swgb_save",
+  "swgb_save_gui",
+]
+
+[tool.coverage.report]
+show_missing = true
+# Reasoned, greppable pragmas only (charter gate 3). No blanket exclusions.
+exclude_also = [
+  "if __name__ == .__main__.:",
+]

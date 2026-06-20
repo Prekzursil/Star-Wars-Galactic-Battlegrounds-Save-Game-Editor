@@ -1,0 +1,27 @@
+name: quality
+
+# Lean 6-gate quality (additive). Thin caller of the shared reusable template.
+# Charter: lint+format+seclint (ruff/gitleaks via pre-commit) | types (basedpyright)
+# | tests+coverage (100% line+branch) | SAST (opengrep) | secrets (gitleaks)
+# | deps (osv-scanner + Dependabot). See .pre-commit-config.yaml + pyproject.toml.
+#
+# Pinned to the template branch so this PR's CI is real now; the migration runbook
+# re-pins to a released tag once the template merges.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    permissions:
+      contents: read
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-quality.yml@v1
+    with:
+      python-version: "3.12"
