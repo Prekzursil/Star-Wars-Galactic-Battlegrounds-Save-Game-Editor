@@ -71,10 +71,8 @@ addopts = "-q"
 
 [tool.coverage.run]
 branch = true
-# App surface under the 100% gate. scripts/security_helpers.py is legacy
-# QZT-SaaS tooling (not part of the editor) and is scheduled for removal with
-# the rest of the SaaS machinery in the migration runbook; it is intentionally
-# out of the lean app coverage scope rather than padded with throwaway tests.
+# App surface under the 100% gate: these two modules are the repository's
+# entire Python source (tests excluded), so nothing ships unmeasured.
 source = [
   "swgb_save",
   "swgb_save_gui",

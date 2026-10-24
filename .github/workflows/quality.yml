@@ -1,27 +1,31 @@
+# QZP lean gate — zero tolerance (any finding of any severity fails).
+# Thin caller of quality-zero-platform's reusable workflow, pinned to an exact
+# commit. Gate changes happen in quality-zero-platform, never here; this repo
+# adopts them by bumping the pin below. See CONTRIBUTING.md.
 name: quality
-
-# Lean 6-gate quality (additive). Thin caller of the shared reusable template.
-# Charter: lint+format+seclint (ruff/gitleaks via pre-commit) | types (basedpyright)
-# | tests+coverage (100% line+branch) | SAST (opengrep) | secrets (gitleaks)
-# | deps (osv-scanner + Dependabot). See .pre-commit-config.yaml + pyproject.toml.
-#
-# Pinned to the template branch so this PR's CI is real now; the migration runbook
-# re-pins to a released tag once the template merges.
 
 on:
   push:
-    branches: [main, master]
+    branches: ["main"]
   pull_request:
-    branches: [main, master]
+    branches: ["main"]
+  # a merge queue's synthetic commit must report the required check too
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: quality-${{ github.ref }}
+  # superseded pull-request runs are cancelled; runs on the default branch
+  # always finish, so a cancelled run never leaves an untested commit red
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   quality:
-    permissions:
-      contents: read
-    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-quality.yml@v1
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-quality.yml@4a218e5808e881d1858ced670aadd63c12ea3497
     with:
       python-version: "3.12"
+      deps-severity-floor: any
