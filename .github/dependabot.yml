@@ -12,10 +12,22 @@ updates:
       update-types:
       - patch
       - minor
-  ignore:
-  - dependency-name: '*'
-    update-types:
-    - version-update:semver-major
+  labels:
+  - dependencies
+  - type:chore
+  - area:ci
+- package-ecosystem: pre-commit
+  directory: /
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
+  groups:
+    pre-commit-root-patch-minor:
+      patterns:
+      - '*'
+      update-types:
+      - patch
+      - minor
   labels:
   - dependencies
   - type:chore
