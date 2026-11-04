@@ -1,5 +1,16 @@
 version: 2
+
 updates:
+# Python rail -- pyproject.toml is the repo's manifest and had NO rail, so
+# Dependabot could alert on it and never propose a fix.
+- package-ecosystem: pip
+  directory: /
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
+  labels:
+  - dependencies
+# the workflows themselves
 - package-ecosystem: github-actions
   directory: /
   schedule:
@@ -16,6 +27,7 @@ updates:
   - dependencies
   - type:chore
   - area:ci
+# the pre-commit hook pins
 - package-ecosystem: pre-commit
   directory: /
   schedule:

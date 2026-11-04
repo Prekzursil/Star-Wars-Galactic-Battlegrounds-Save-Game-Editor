@@ -1,10 +1,17 @@
 name: CodeQL
 
-permissions:
-  actions: read
-  contents: read
-  security-events: write
-
+# Fleet CODEQL DECISION: ADVANCED configuration, owned by THIS repo.
+#   queries: security-extended + security-and-quality (strictly subsumes the
+#   default suite AND the extended suite), matrix over every language this
+#   repo actually has (python), push to main + pull_request targeting main +
+#   weekly schedule, upload-sarif to code scanning, category per language.
+# The repo's OWN test/coverage suites (verify.yml, quality.yml) stay wired
+# beside it and are untouched by this file.
+#
+# This replaces the QZP reusable-codeql.yml@b4fbe384 call, which ran the
+# security-and-quality suite ONLY -- every security-extended query was missing.
+# build-mode: none -- this CodeQL CLI supports no other mode for the Python
+# extractor ("Python does not support the autobuild build mode").
 on:
   push:
     branches: [main, master]
@@ -16,16 +23,34 @@ on:
     - cron: "23 3 * * 1"
   workflow_dispatch:
 
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
 jobs:
-  codeql:
+  analyze:
+    name: analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
       security-events: write
-    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-codeql.yml@b4fbe38470fd2831f86f194df5b638a271bae8b8
-    with:
-      repo_slug: ${{ github.repository }}
-      event_name: ${{ github.event_name }}
-      sha: ${{ github.event.pull_request.head.sha || github.sha }}
-      platform_repository: Prekzursil/quality-zero-platform
-      platform_ref: main
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["python"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended,security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
