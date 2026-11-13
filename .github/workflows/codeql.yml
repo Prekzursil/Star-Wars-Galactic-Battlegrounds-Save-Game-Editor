@@ -51,7 +51,13 @@ jobs:
         # injection detection); every repo that runs workflows "has" it.
         language: ["python", "actions"]
     steps:
+      # Analyze the PR HEAD, not the merge commit: the required
+      # code-scanning merge rule expects results for the head SHA, and the
+      # analysis is keyed to the checkout. Same mechanism the QZP wrapper
+      # used (reusable-codeql.yml: `ref: ${{ inputs.sha ... }}`).
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
