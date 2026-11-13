@@ -2,16 +2,23 @@ name: CodeQL
 
 # Fleet CODEQL DECISION: ADVANCED configuration, owned by THIS repo.
 #   queries: security-extended + security-and-quality (strictly subsumes the
-#   default suite AND the extended suite), matrix over every language this
-#   repo actually has (python), push to main + pull_request targeting main +
-#   weekly schedule, upload-sarif to code scanning, category per language.
+#   default suite AND the extended suite), every language this repo actually
+#   has (python + actions -- actions is the CodeQL language covering
+#   .github/workflows/* action-injection), push to main + pull_request
+#   targeting main + weekly schedule, upload-sarif to code scanning.
 # The repo's OWN test/coverage suites (verify.yml, quality.yml) stay wired
 # beside it and are untouched by this file.
 #
-# This replaces the QZP reusable-codeql.yml@b4fbe384 call, which ran the
-# security-and-quality suite ONLY -- every security-extended query was missing.
-# build-mode: none -- this CodeQL CLI supports no other mode for the Python
-# extractor ("Python does not support the autobuild build mode").
+# Shape notes, all measured on THIS PR:
+# - build-mode: none -- the only mode this CodeQL CLI supports for the
+#   python/actions extractors.
+# - the analyze job CHECKS OUT THE PR HEAD: analyses key to the checkout, and
+#   the required-results rule expects the head SHA (merge-commit checkouts
+#   left the merge blocked: uploads landed on refs/pull/N/merge).
+# - job id `codeql` and NO explicit category: the required-results rule
+#   tracks the wrapper-era analysis_key+category
+#   (.github/workflows/codeql.yml:codeql); explicit /language:* categories
+#   left the merge blocked too. Auto-derived categories keep that contract.
 on:
   push:
     branches: [main, master]
@@ -29,49 +36,22 @@ permissions:
   security-events: write
 
 jobs:
-  # Job id `codeql` -- the code-scanning analysis_key is
-  # "<workflow-path>:<job-id>" and the required-results rule tracks the key
-  # the QZP-wrapper era registered on main
-  # (.github/workflows/codeql.yml:codeql). Keeping the id makes this
-  # workflow's PR analyses match what the rule expects.
   codeql:
-    name: analyze (${{ matrix.language }})
+    name: CodeQL
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
       security-events: write
-    # Key the upload to the PR HEAD commit, not the merge commit: the
-    # branch-protection "Code scanning results required" rule expects an
-    # analysis for the head SHA (the QZP wrapper this replaced did the same
-    # via its explicit `sha:` input; measured on PR #45 -- the upload landed
-    # on refs/pull/45/merge and the merge was refused with "Code scanning is
-    # still expecting 1 result from CodeQL").
-    env:
-      GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-    strategy:
-      fail-fast: false
-      matrix:
-        # actions = the CodeQL language for .github/workflows/* (action
-        # injection detection); every repo that runs workflows "has" it.
-        language: ["python", "actions"]
     steps:
-      # Analyze the PR HEAD, not the merge commit: the required
-      # code-scanning merge rule expects results for the head SHA, and the
-      # analysis is keyed to the checkout. Same mechanism the QZP wrapper
-      # used (reusable-codeql.yml: `ref: ${{ inputs.sha ... }}`).
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
-          languages: ${{ matrix.language }}
+          languages: python,actions
           build-mode: none
           queries: security-extended,security-and-quality
-
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:${{ matrix.language }}"
