@@ -1,10 +1,24 @@
 name: CodeQL
 
-permissions:
-  actions: read
-  contents: read
-  security-events: write
-
+# Fleet CODEQL DECISION: ADVANCED configuration, owned by THIS repo.
+#   queries: security-extended + security-and-quality (strictly subsumes the
+#   default suite AND the extended suite), every language this repo actually
+#   has (python + actions -- actions is the CodeQL language covering
+#   .github/workflows/* action-injection), push to main + pull_request
+#   targeting main + weekly schedule, upload-sarif to code scanning.
+# The repo's OWN test/coverage suites (verify.yml, quality.yml) stay wired
+# beside it and are untouched by this file.
+#
+# Shape notes, all measured on THIS PR:
+# - build-mode: none -- the only mode this CodeQL CLI supports for the
+#   python/actions extractors.
+# - the analyze job CHECKS OUT THE PR HEAD: analyses key to the checkout, and
+#   the required-results rule expects the head SHA (merge-commit checkouts
+#   left the merge blocked: uploads landed on refs/pull/N/merge).
+# - job id `codeql` and NO explicit category: the required-results rule
+#   tracks the wrapper-era analysis_key+category
+#   (.github/workflows/codeql.yml:codeql); explicit /language:* categories
+#   left the merge blocked too. Auto-derived categories keep that contract.
 on:
   push:
     branches: [main, master]
@@ -16,16 +30,28 @@ on:
     - cron: "23 3 * * 1"
   workflow_dispatch:
 
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
 jobs:
   codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
       security-events: write
-    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-codeql.yml@b4fbe38470fd2831f86f194df5b638a271bae8b8
-    with:
-      repo_slug: ${{ github.repository }}
-      event_name: ${{ github.event_name }}
-      sha: ${{ github.event.pull_request.head.sha || github.sha }}
-      platform_repository: Prekzursil/quality-zero-platform
-      platform_ref: main
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: python,actions
+          build-mode: none
+          queries: security-extended,security-and-quality
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
