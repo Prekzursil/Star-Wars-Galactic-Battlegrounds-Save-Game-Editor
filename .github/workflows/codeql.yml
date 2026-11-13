@@ -47,7 +47,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ["python"]
+        # actions = the CodeQL language for .github/workflows/* (action
+        # injection detection); every repo that runs workflows "has" it.
+        language: ["python", "actions"]
     steps:
       - uses: actions/checkout@v7
 
