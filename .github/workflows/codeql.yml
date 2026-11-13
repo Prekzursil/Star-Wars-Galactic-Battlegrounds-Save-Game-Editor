@@ -36,6 +36,14 @@ jobs:
       actions: read
       contents: read
       security-events: write
+    # Key the upload to the PR HEAD commit, not the merge commit: the
+    # branch-protection "Code scanning results required" rule expects an
+    # analysis for the head SHA (the QZP wrapper this replaced did the same
+    # via its explicit `sha:` input; measured on PR #45 -- the upload landed
+    # on refs/pull/45/merge and the merge was refused with "Code scanning is
+    # still expecting 1 result from CodeQL").
+    env:
+      GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     strategy:
       fail-fast: false
       matrix:
