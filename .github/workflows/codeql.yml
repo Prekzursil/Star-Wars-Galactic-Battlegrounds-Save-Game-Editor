@@ -29,7 +29,12 @@ permissions:
   security-events: write
 
 jobs:
-  analyze:
+  # Job id `codeql` -- the code-scanning analysis_key is
+  # "<workflow-path>:<job-id>" and the required-results rule tracks the key
+  # the QZP-wrapper era registered on main
+  # (.github/workflows/codeql.yml:codeql). Keeping the id makes this
+  # workflow's PR analyses match what the rule expects.
+  codeql:
     name: analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
