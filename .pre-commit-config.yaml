@@ -20,7 +20,7 @@ exclude: |-
 repos:
   # --- Gate 1: Python lint + format (ruff 0.15.17) ---
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.17
+    rev: v0.17.4
     hooks:
       - id: ruff
         name: ruff (lint --fix)
