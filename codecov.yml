@@ -1,19 +1,18 @@
 codecov:
   require_ci_to_pass: true
 
+flags:
+  python:
+    paths:
+      - coverage/
+
 coverage:
-  precision: 2
-  round: down
   status:
     project:
       default:
-        target: 100%
+        target: 100.0%
         threshold: 0%
     patch:
       default:
-        target: 100%
+        target: 100.0%
         threshold: 0%
-
-comment:
-  layout: "reach,diff,flags,files"
-  require_changes: true
